@@ -1,0 +1,159 @@
+{% extends 'layout.html' %}
+
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+    /* Mengatur tinggi peta agar cukup luas mengikuti bentuk Badung */
+    #map { height: 750px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6 p-5">
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">🗺️ Eksplorasi Spasial Tutupan Lahan</h1>
+        <p class="text-slate-500 mt-1">Simulasi perubahan lahan Kabupaten Badung berbasis Cellular Automata Markov (Akurasi: 91.87%)</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        
+        <div class="lg:col-span-3">
+            <div class="bg-white p-2 rounded-2xl shadow-2xl border-4 border-white ring-1 ring-slate-200 overflow-hidden">
+                <div id="map" class="rounded-xl"></div>
+            </div>
+        </div>
+
+        <div class="space-y-6">
+            
+            <div class="bg-white p-6 rounded-2xl shadow-lg border border-slate-100">
+                <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    ⏳ Timeline Analisis
+                </h3>
+                <input type="range" id="yearSlider" min="2015" max="2030" step="5" value="2030" 
+                       class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                <div class="flex justify-between text-xs font-bold text-slate-400 mt-3 px-1">
+                    <span>2015</span>
+                    <span>2020</span>
+                    <span>2025</span>
+                    <span>2030</span>
+                </div>
+                <p class="text-center mt-4 text-sm font-black text-blue-600 bg-blue-50 py-2 rounded-lg">
+                    Tahun Terpilih: <span id="yearDisplay">2030</span>
+                </p>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-lg border border-slate-100">
+                <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    📊 Estimasi Luasan
+                </h3>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center p-3 bg-blue-50 rounded-xl border-l-4 border-blue-500">
+                        <span class="text-xs font-bold text-blue-700 uppercase">Badan Air</span>
+                        <span class="text-lg font-black text-blue-900" id="statAir">14,210 Ha</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-red-50 rounded-xl border-l-4 border-red-500">
+                        <span class="text-xs font-bold text-red-700 uppercase">Terbangun</span>
+                        <span class="text-lg font-black text-red-900" id="statTerbangun">14,210 Ha</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-stone-50 rounded-xl border-l-4 border-stone-400">
+                        <span class="text-xs font-bold text-stone-700 uppercase">Lahan Terbuka</span>
+                        <span class="text-lg font-black text-stone-900" id="statTerbuka">0 Ha</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-orange-50 rounded-xl border-l-4 border-orange-500">
+                        <span class="text-xs font-bold text-orange-700 uppercase">Sawah</span>
+                        <span class="text-lg font-black text-orange-900" id="statSawah">8,540 Ha</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-green-50 rounded-xl border-l-4 border-green-500">
+                        <span class="text-xs font-bold text-green-700 uppercase">Vegetasi</span>
+                        <span class="text-lg font-black text-green-900" id="statVeg">5,120 Ha</span>
+                    </div>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-4 italic">*Data hasil pemodelan spasial Badung Utara - Selatan</p>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    var map = L.map('map', {
+        renderer: L.canvas() // Memaksa Leaflet menggunakan Canvas rendering alih-alih SVG
+    }).setView([-8.55, 115.18], 11);
+    var currentLayer = null; 
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    // 2. STYLE WARNA
+    function getStyle(feature) {
+        let kelas = feature.properties.Kelas_Lahan || feature.properties.kelas;
+        let color = "#cbd5e1"; 
+        if (kelas === 'Lahan Terbangun') color = "#ef4444";        
+        if (kelas === 'Lahan Sawah') color = "#f59e0b";            
+        if (kelas === 'Lahan Vegetasi lainnya') color = "#22c55e"; 
+        if (kelas === 'Badan Air') color = "#3b82f6";              
+        if (kelas === 'Lahan Terbuka') color = "#a8a29e";          
+        return { fillColor: color, weight: 0, opacity: 0, color: 'white', fillOpacity: 1 };
+    }
+
+    // 3. FUNGSI UPDATE SAKTI
+    function updateHalaman(year) {
+        console.log("Mencoba mengambil data untuk tahun:", year);
+
+        // A. Update Statistik
+        fetch(`/api/stats/${year}`)
+            .then(res => res.json())
+            .then(data => {
+                console.log("SUKSES Baca CSV:", data);
+                if (!data.error) {
+                    // Update angka jika elemennya ada di HTML
+                    if(document.getElementById('statAir')) document.getElementById('statAir').innerText = data.air || "0 Ha";
+                    if(document.getElementById('statTerbangun')) document.getElementById('statTerbangun').innerText = data.terbangun || "0 Ha";
+                    if(document.getElementById('statTerbuka')) document.getElementById('statTerbuka').innerText = data.terbuka || "0 Ha";
+                    if(document.getElementById('statSawah')) document.getElementById('statSawah').innerText = data.sawah || "0 Ha";
+                    if(document.getElementById('statVeg')) document.getElementById('statVeg').innerText = data.vegetasi || "0 Ha";
+                }
+            })
+            .catch(err => console.error("Error CSV:", err));
+
+        // B. Update Peta
+        fetch(`/api/geojson/${year}`)
+            .then(res => res.json())
+            .then(data => {
+                console.log("SUKSES Baca GeoJSON:", data);
+                if (data.error) {
+                    console.error("Error dari Flask:", data.error);
+                    return;
+                }
+                
+                if (currentLayer) { map.removeLayer(currentLayer); }
+
+                currentLayer = L.geoJson(data, {
+                    style: getStyle,
+                    onEachFeature: function (feature, layer) {
+                        let props = feature.properties;
+                        layer.bindPopup(`<b>Kecamatan:</b> ${props.Kecamatan || props.kecamatan}<br><b>Kelas:</b> ${props.Kelas_Lahan || props.kelas}`);
+                    }
+                }).addTo(map);
+            })
+            .catch(err => console.error("Error fetch GeoJSON:", err));
+    }
+
+    // 4. EVENT SLIDER
+    const slider = document.getElementById('yearSlider');
+    const display = document.getElementById('yearDisplay');
+
+    slider.onchange = function() {
+        display.innerHTML = this.value;
+        updateHalaman(this.value);
+    };
+
+    // PANGGIL PERTAMA KALI
+    setTimeout(() => { updateHalaman('2015'); }, 500); // Beri jeda 0.5 detik agar peta siap
+</script>
+</script>
+{% endblock %}

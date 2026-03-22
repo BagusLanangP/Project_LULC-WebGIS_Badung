@@ -1,0 +1,268 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="space-y-6 p-5">
+    
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">📊 Analisis Statistik LULC</h1>
+        <p class="text-slate-500 mt-1">Grafik tren perubahan luasan lahan Kabupaten Badung dari 2015 hingga proyeksi 2030.</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-lg border border-slate-100">
+            <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                📈 Tren Perubahan Tutupan Lahan (2015 - 2030)
+            </h3>
+            <div class="relative h-[400px] w-full">
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-lg border border-slate-100">
+            <h3 class="font-bold text-slate-800 mb-4 flex items-center justify-between">
+                <span>🍩 Komposisi Area</span>
+                <select id="yearPieSelect" class="text-sm border border-slate-200 rounded-lg px-2 py-1 outline-none text-slate-600 bg-slate-50">
+                    <option value="0">Tahun 2015</option>
+                    <option value="1">Tahun 2020</option>
+                    <option value="2">Tahun 2025</option>
+                    <option value="3" selected>Tahun 2030</option>
+                </select>
+            </h3>
+            <div class="relative h-[300px] w-full flex justify-center mt-8">
+                <canvas id="compositionChart"></canvas>
+            </div>
+            <p class="text-center text-xs text-slate-400 mt-6 italic">
+                *Pilih tahun pada *dropdown* di atas untuk melihat rasio luasan.
+            </p>
+        </div>
+
+    </div>
+
+    <div class="bg-white p-6 rounded-2xl shadow-lg border border-slate-100 mt-6">
+        
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+            <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                📋 Rekapitulasi Luasan Detail (Hektar)
+            </h3>
+            
+            <div class="flex gap-3">
+                <select id="tableYearFilter" class="border border-slate-200 rounded-lg px-3 py-2 outline-none text-slate-600 bg-slate-50 text-sm font-medium focus:ring-2 focus:ring-blue-500">
+                    <option value="2015">Tahun 2015</option>
+                    <option value="2020">Tahun 2020</option>
+                    <option value="2025">Tahun 2025</option>
+                    <option value="2030" selected>Tahun 2030</option>
+                </select>
+
+                <select id="tableKecFilter" class="border border-slate-200 rounded-lg px-3 py-2 outline-none text-slate-600 bg-slate-50 text-sm font-medium focus:ring-2 focus:ring-blue-500">
+                    <option value="Semua">Semua Kecamatan</option>
+                    <option value="Abiansemal">Abiansemal</option>
+                    <option value="Kuta">Kuta</option>
+                    <option value="Kuta Selatan">Kuta Selatan</option>
+                    <option value="Kuta Utara">Kuta Utara</option>
+                    <option value="Mengwi">Mengwi</option>
+                    <option value="Petang">Petang</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-slate-200">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-100 text-slate-600 text-sm uppercase tracking-wider">
+                        <th class="p-4 font-bold border-b border-slate-200">Kecamatan</th>
+                        <th class="p-4 font-bold border-b border-slate-200">Kelas Lahan</th>
+                        <th class="p-4 font-bold border-b border-slate-200 text-right">Luas (Ha)</th>
+                    </tr>
+                </thead>
+                <tbody id="detailTableBody" class="divide-y divide-slate-100 text-slate-700 text-sm">
+                    <tr><td colspan="3" class="p-4 text-center text-slate-400">Memuat data...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    // 1. DAFTAR TAHUN YANG AKAN DIANALISIS
+    const years = [2015, 2020, 2025, 2030];
+
+    // Variabel penampung grafik agar bisa di-update
+    let trendChartInstance = null;
+    let compositionChartInstance = null;
+
+    // Fungsi kecil untuk membersihkan teks "1,200.50 Ha" menjadi angka murni 1200.50
+    function parseHa(str) {
+        if (!str) return 0;
+        return parseFloat(str.replace(/,/g, '').replace(' Ha', ''));
+    }
+
+    // 2. FUNGSI UTAMA UNTUK MENGAMBIL SEMUA DATA SEKALIGUS
+    async function initCharts() {
+        try {
+            // Trik Cerdas: Kita panggil API Flask Abang untuk ke-4 tahun sekaligus!
+            const requests = years.map(year => fetch(`/api/stats/${year}`).then(res => res.json()));
+            const results = await Promise.all(requests);
+            
+            // Ekstrak data mentah menjadi array angka
+            const dataTerbangun = results.map(r => parseHa(r.terbangun));
+            const dataSawah = results.map(r => parseHa(r.sawah));
+            const dataVeg = results.map(r => parseHa(r.vegetasi));
+            const dataAir = results.map(r => parseHa(r.air));
+            const dataTerbuka = results.map(r => parseHa(r.terbuka));
+
+            // --------------------------------------------------------
+            // RENDER GRAFIK 1: TREN (LINE CHART)
+            // --------------------------------------------------------
+            const ctxTrend = document.getElementById('trendChart').getContext('2d');
+            trendChartInstance = new Chart(ctxTrend, {
+                type: 'line',
+                data: {
+                    labels: years, // Label sumbu X
+                    datasets: [
+                        { label: 'Lahan Terbangun', data: dataTerbangun, borderColor: '#ef4444', backgroundColor: '#ef4444', tension: 0.3, borderWidth: 3 },
+                        { label: 'Lahan Sawah', data: dataSawah, borderColor: '#f59e0b', backgroundColor: '#f59e0b', tension: 0.3, borderWidth: 3 },
+                        { label: 'Vegetasi Lainnya', data: dataVeg, borderColor: '#22c55e', backgroundColor: '#22c55e', tension: 0.3, borderWidth: 3 },
+                        { label: 'Badan Air', data: dataAir, borderColor: '#3b82f6', backgroundColor: '#3b82f6', tension: 0.3, borderWidth: 2, borderDash: [5, 5] },
+                        { label: 'Lahan Terbuka', data: dataTerbuka, borderColor: '#a8a29e', backgroundColor: '#a8a29e', tension: 0.3, borderWidth: 2, borderDash: [5, 5] }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { tooltip: { callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + ctx.raw.toLocaleString() + ' Ha'; } } } },
+                    scales: { y: { title: { display: true, text: 'Luasan (Hektar)' }, beginAtZero: true } }
+                }
+            });
+
+            // --------------------------------------------------------
+            // RENDER GRAFIK 2: KOMPOSISI (DOUGHNUT CHART)
+            // --------------------------------------------------------
+            const ctxComp = document.getElementById('compositionChart').getContext('2d');
+            
+            function updateDoughnut(indexTahun) {
+                if (compositionChartInstance) { compositionChartInstance.destroy(); }
+                
+                compositionChartInstance = new Chart(ctxComp, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Terbangun', 'Sawah', 'Vegetasi', 'Air', 'Terbuka'],
+                        datasets: [{
+                            data: [
+                                dataTerbangun[indexTahun], 
+                                dataSawah[indexTahun], 
+                                dataVeg[indexTahun], 
+                                dataAir[indexTahun], 
+                                dataTerbuka[indexTahun]
+                            ],
+                            backgroundColor: ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a8a29e'],
+                            borderWidth: 2,
+                            hoverOffset: 10
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '65%', // Besaran lubang donat
+                        plugins: {
+                            legend: { position: 'bottom', labels: { boxWidth: 12, padding: 15 } },
+                            tooltip: { callbacks: { label: function(ctx) { return ' ' + ctx.label + ': ' + ctx.raw.toLocaleString() + ' Ha'; } } }
+                        }
+                    }
+                });
+            }
+
+            // Jalankan donat chart untuk tahun 2030 (Index ke-3 di array)
+            updateDoughnut(3);
+
+            // Ganti data donat chart saat dropdown dipilih
+            document.getElementById('yearPieSelect').addEventListener('change', function(e) {
+                updateDoughnut(e.target.value);
+            });
+
+        } catch (error) {
+            console.error("Gagal memuat data statistik:", error);
+        }
+    }
+    // === LOGIKA TABEL INTERAKTIF ===
+    let tableDataCache = []; // Menyimpan data sementara agar tidak loading terus saat ganti kecamatan
+
+    // 1. Fungsi mengambil data dari Flask
+    async function fetchTableData(year) {
+        try {
+            document.getElementById('detailTableBody').innerHTML = '<tr><td colspan="3" class="p-4 text-center text-slate-400">Sedang memuat data...</td></tr>';
+            
+            const res = await fetch(`/api/detail/${year}`);
+            const result = await res.json();
+            
+            if (!result.error) {
+                tableDataCache = result.data; // Simpan data di memori
+                renderTable(); // Jalankan fungsi menggambar tabel
+            }
+        } catch (error) {
+            console.error("Gagal load detail tabel:", error);
+        }
+    }
+
+    // 2. Fungsi menggambar baris tabel beserta filter
+    function renderTable() {
+        const kecFilter = document.getElementById('tableKecFilter').value;
+        const tbody = document.getElementById('detailTableBody');
+        tbody.innerHTML = ''; // Bersihkan tabel lama
+
+        // Filter data sesuai pilihan dropdown kecamatan
+        let filteredData = tableDataCache;
+        if (kecFilter !== 'Semua') {
+            filteredData = tableDataCache.filter(item => item.Kecamatan === kecFilter);
+        }
+
+        // Jika tidak ada data
+        if (filteredData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-slate-400">Tidak ada data untuk filter ini.</td></tr>';
+            return;
+        }
+
+        // Masukkan data satu per satu ke dalam tabel
+        filteredData.forEach(item => {
+            // Beri warna latar belakang khusus agar lebih cantik
+            let bgClass = "bg-white";
+            if(item.Kelas_Lahan === 'Lahan Terbangun') bgClass = "bg-red-50/30";
+            if(item.Kelas_Lahan === 'Lahan Sawah') bgClass = "bg-orange-50/30";
+            if(item.Kelas_Lahan === 'Lahan Vegetasi Lainnya') bgClass = "bg-green-50/30";
+            if(item.Kelas_Lahan === 'Badan Air') bgClass = "bg-blue-50/30";
+
+            // Format angka koma
+            let luasFormatted = parseFloat(item.Luas_Ha).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+            let tr = `<tr class="hover:bg-slate-50 transition-colors ${bgClass}">
+                <td class="p-4 font-medium">${item.Kecamatan}</td>
+                <td class="p-4">${item.Kelas_Lahan}</td>
+                <td class="p-4 font-bold text-right text-slate-800">${luasFormatted}</td>
+            </tr>`;
+            tbody.insertAdjacentHTML('beforeend', tr);
+        });
+    }
+
+    // 3. Pasang pendeteksi perubahan (Event Listener) pada Dropdown
+    document.getElementById('tableYearFilter').addEventListener('change', function(e) {
+        fetchTableData(e.target.value); // Kalau ganti tahun, ambil data baru dari Flask
+    });
+
+    document.getElementById('tableKecFilter').addEventListener('change', function() {
+        renderTable(); // Kalau ganti kecamatan, cukup saring data di memori (Sangat Cepat!)
+    });
+
+    // 4. Panggil pertama kali saat halaman dibuka (Untuk Tahun 2030)
+    fetchTableData('2030');
+
+    // Jalankan saat halaman dibuka
+    initCharts();
+</script>
+{% endblock %}

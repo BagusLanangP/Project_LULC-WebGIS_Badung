@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>SIG LULC Badung</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-slate-50 overflow-hidden">
+    
+    {% include 'components/navbar.html' %}
+
+    <div class="flex h-[calc(100vh-64px)]">
+        {% include 'components/sidebar.html' %}
+
+        <main id="mainContent" class="flex-1 overflow-y-auto transition-all duration-300">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script>
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+
+        sidebarToggle.onclick = function() {
+            if (sidebar.classList.contains('w-0')) {
+                sidebar.classList.remove('w-0');
+                sidebar.classList.add('w-80');
+            } else {
+                sidebar.classList.remove('w-80');
+                sidebar.classList.add('w-0');
+            }
+        };
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
