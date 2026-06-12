@@ -2,9 +2,29 @@
 
 {% block head %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
 <style>
     /* Mengatur tinggi peta agar cukup luas mengikuti bentuk Badung */
     #map { height: 750px; }
+    /* Style untuk Legenda Peta */
+    .info.legend {
+        padding: 10px 15px;
+        font: 12px/18px Arial, Helvetica, sans-serif;
+        background: white;
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+        border-radius: 12px;
+        line-height: 24px;
+        color: #333;
+    }
+    .info.legend i {
+        width: 18px;
+        height: 18px;
+        float: left;
+        margin-right: 10px;
+        opacity: 0.8;
+        border-radius: 4px;
+    }
 </style>
 {% endblock %}
 
@@ -18,14 +38,168 @@
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
         
         <div class="lg:col-span-3">
-            <div class="bg-white p-2 rounded-2xl shadow-2xl border-4 border-white ring-1 ring-slate-200 overflow-hidden">
-                <div id="map" class="rounded-xl"></div>
+            <div class="bg-white p-2 rounded-2xl shadow-2xl border-4 border-white ring-1 ring-slate-200 overflow-hidden relative">
+                <!-- Floating Alert Banner for Report Mode (Hidden by default) -->
+                <div id="reportMapHelp" class="absolute top-4 left-12 right-12 z-[1000] bg-rose-50 border-2 border-rose-500 rounded-xl p-3 shadow-lg flex items-center justify-between hidden transition-all duration-300">
+                    <div class="flex items-center gap-3">
+                        <span class="text-lg animate-bounce">📍</span>
+                        <div>
+                            <p class="text-xs font-black text-rose-800">Mode Pelaporan Aktif</p>
+                            <p class="text-[10px] font-bold text-rose-600">Klik pada lokasi sawah/pelanggaran di peta untuk mengisi formulir pengaduan.</p>
+                        </div>
+                    </div>
+                    <button id="btnCancelReportMode" class="text-rose-500 hover:text-rose-700 text-xs font-black bg-rose-100 hover:bg-rose-200 px-3 py-1.5 rounded-lg transition">Batal</button>
+                </div>
+
+                <!-- Single Map -->
+                <div id="map" class="rounded-xl h-[750px] w-full"></div>
+                
+                <!-- Split Map Container (Hidden by default) -->
+                <div id="map-split-container" class="rounded-xl h-[750px] w-full grid grid-cols-2 gap-2 hidden">
+                    <div class="relative h-full w-full">
+                        <div class="absolute top-2 left-12 z-[1000] bg-white px-3 py-1.5 rounded-lg shadow border border-slate-200 text-xs font-bold text-slate-700">
+                            Peta Kiri: <span id="yearLeftLabel">2015</span>
+                        </div>
+                        <div id="map-left" class="h-full w-full rounded-l-lg border-r border-slate-200"></div>
+                    </div>
+                    <div class="relative h-full w-full">
+                        <div class="absolute top-2 left-12 z-[1000] bg-white px-3 py-1.5 rounded-lg shadow border border-slate-200 text-xs font-bold text-slate-700">
+                            Peta Kanan: <span id="yearRightLabel">2030</span>
+                        </div>
+                        <div id="map-right" class="h-full w-full rounded-r-lg"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Disclaimer Note below the map -->
+            <div class="mt-4 p-4 bg-slate-100/60 border border-slate-200 rounded-2xl text-xs text-slate-500 leading-relaxed">
+                <p class="font-bold text-slate-700 flex items-center gap-1.5 mb-1">
+                    <span>⚠️</span> Disklaimer Pemodelan Spasial
+                </p>
+                <p class="italic">
+                    Data proyeksi tutupan lahan (2030) dan rekomendasi kebijakan mitigasi merupakan hasil pemodelan komputer prediktif dengan tingkat akurasi tertentu. Proses verifikasi fisik secara langsung di lapangan (*ground checking*) tetap menjadi referensi utama sebelum pengambilan kebijakan resmi.
+                </p>
             </div>
         </div>
 
         <div class="space-y-6">
             
+            <!-- Map Mode & Custom Query Panel -->
             <div class="bg-white p-6 rounded-2xl shadow-lg border border-slate-100">
+                <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    🛠️ Kontrol & Analisis Peta
+                </h3>
+                
+                <!-- Toggle Buttons for Mode -->
+                <div class="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl mb-4">
+                    <button id="btnSingleMap" class="py-2 text-xs font-bold rounded-lg bg-white shadow text-blue-600 transition">
+                        Peta Tunggal
+                    </button>
+                    <button id="btnSplitMap" class="py-2 text-xs font-bold rounded-lg text-slate-500 hover:text-slate-700 transition">
+                        Bandingkan (Split)
+                    </button>
+                </div>
+                
+                <!-- Split Map Year Selectors (Shown only in split mode) -->
+                <div id="splitControls" class="hidden space-y-3 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Tahun Peta Kiri</label>
+                        <select id="selectLeftYear" class="w-full text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-lg p-2 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                            <option value="2015">2015 (Historis)</option>
+                            <option value="2020">2020 (Historis)</option>
+                            <option value="2025">2025 (Historis)</option>
+                            <option value="2030">2030 (Proyeksi)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Tahun Peta Kanan</label>
+                        <select id="selectRightYear" class="w-full text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-lg p-2 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                            <option value="2015">2015 (Historis)</option>
+                            <option value="2020">2020 (Historis)</option>
+                            <option value="2025">2025 (Historis)</option>
+                            <option value="2030" selected>2030 (Proyeksi)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Layer Pendukung Keputusan (DSS Overlay) -->
+                <div id="dssLayerPanel" class="border-t border-slate-100 pt-3 pb-3 space-y-2">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Layer Pendukung Keputusan (DSS)</label>
+                    <label class="flex items-center gap-2.5 p-2 bg-emerald-50/50 hover:bg-emerald-50 border border-emerald-100 rounded-xl cursor-pointer transition">
+                        <input type="checkbox" id="chkLP2B" class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500 accent-emerald-500">
+                        <div>
+                            <p class="text-xs font-extrabold text-slate-700">Zona LP2B Badung</p>
+                            <p class="text-[9px] text-slate-400 font-bold">Lahan Sawah yang Dilindungi</p>
+                        </div>
+                    </label>
+                    <label class="flex items-center gap-2.5 p-2 bg-red-50/50 hover:bg-red-50 border border-red-100 rounded-xl cursor-pointer transition">
+                        <input type="checkbox" id="chkConflict" class="w-4 h-4 text-red-600 border-slate-300 rounded focus:ring-red-500 accent-red-500">
+                        <div>
+                            <p class="text-xs font-extrabold text-slate-700">Deteksi Pelanggaran LP2B</p>
+                            <p class="text-[9px] text-slate-400 font-bold" id="conflictSubtext">Alih Fungsi Lahan Ilegal</p>
+                        </div>
+                    </label>
+                    <label class="flex items-center gap-2.5 p-2 bg-orange-50/50 hover:bg-orange-50 border border-orange-100 rounded-xl cursor-pointer transition">
+                        <input type="checkbox" id="chkVulnerability" class="w-4 h-4 text-orange-600 border-slate-300 rounded focus:ring-orange-500 accent-orange-500">
+                        <div>
+                            <p class="text-xs font-extrabold text-slate-700">Kerentanan Alih Fungsi Sawah</p>
+                            <p class="text-[9px] text-slate-400 font-bold" id="vulnerabilitySubtext">Daerah Rawan Berubah (2030)</p>
+                        </div>
+                    </label>
+                </div>
+                
+                <!-- Custom Query Draw Tool Button -->
+                <div id="drawControlPanel" class="border-t border-slate-100 pt-3">
+                    <button id="btnToggleDraw" class="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white text-xs font-black rounded-xl shadow-md transition duration-150">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                        Gambar Area Kustom
+                    </button>
+                    <button id="btnClearDraw" class="hidden w-full mt-2 py-2 px-4 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold rounded-xl border border-rose-200 transition duration-150">
+                        Hapus & Reset Gambar
+                    </button>
+                </div>
+
+                <!-- Pelaporan Pelanggaran -->
+                <div id="reportControlPanel" class="border-t border-slate-100 pt-3 mt-3">
+                    <button id="btnToggleReport" class="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white text-xs font-black rounded-xl shadow-md transition duration-150">
+                        🚨 Laporkan Alih Fungsi Lahan
+                    </button>
+                </div>
+            </div>
+
+            <!-- Custom Area Analysis Results Panel (Hidden by default) -->
+            <div id="customAnalysisPanel" class="hidden bg-white p-5 rounded-2xl shadow-lg border border-slate-100 mt-4">
+                <div class="flex justify-between items-center mb-3">
+                    <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                        🔍 Analisis Area Tergambar
+                    </h4>
+                    <button id="btnCloseAnalysis" class="text-slate-400 hover:text-slate-600 text-xs font-bold">✕</button>
+                </div>
+                
+                <div id="customAnalysisLoading" class="text-center py-6 text-slate-400 text-xs flex flex-col items-center gap-2">
+                    <svg class="animate-spin h-5 w-5 text-emerald-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Menghitung luasan area...
+                </div>
+                
+                <div id="customAnalysisResults" class="hidden space-y-3">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase">Distribusi Luasan Lahan:</p>
+                    <div id="customAnalysisList" class="space-y-2.5">
+                        <!-- Dynamic elements will be inserted here -->
+                    </div>
+                    <div class="border-t border-slate-100 pt-2.5 mt-2.5 flex justify-between items-center text-xs font-bold text-slate-700">
+                        <span>Total Area Tergambar</span>
+                        <span id="customTotalArea" class="text-sm font-black text-emerald-600">0 Ha</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Timeline Analisis Slider -->
+            <div id="yearSliderCard" class="bg-white p-6 rounded-2xl shadow-lg border border-slate-100">
                 <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
                     ⏳ Timeline Analisis
                 </h3>
@@ -42,6 +216,69 @@
                 </p>
             </div>
 
+            <!-- Unduh Data Raster (GeoTIFF) -->
+            <div class="bg-white p-6 rounded-2xl shadow-lg border border-slate-100">
+                <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Unduh Data Raster (GeoTIFF)
+                </h3>
+                <div class="space-y-2">
+                    <a href="{{ url_for('static', filename='downloads/LULC_Badung_2015.tif') }}" 
+                       download="LULC_Badung_2015.tif"
+                       class="flex items-center justify-between w-full p-2.5 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 rounded-lg text-left transition group">
+                        <div class="flex items-center gap-2.5">
+                            <div class="p-1.5 bg-white border border-slate-200 rounded text-slate-500 group-hover:text-indigo-600 group-hover:border-indigo-100 transition">
+                                <span class="text-[10px] font-bold">TIF</span>
+                            </div>
+                            <div>
+                                <p class="text-xs font-semibold text-slate-700 group-hover:text-indigo-900">LULC Badung 2015</p>
+                                <p class="text-[10px] text-slate-400">Landsat 8 (30m)</p>
+                            </div>
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400 group-hover:text-indigo-500 transition transform group-hover:translate-y-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                    </a>
+
+                    <a href="{{ url_for('static', filename='downloads/LULC_Badung_2020.tif') }}" 
+                       download="LULC_Badung_2020.tif"
+                       class="flex items-center justify-between w-full p-2.5 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 rounded-lg text-left transition group">
+                        <div class="flex items-center gap-2.5">
+                            <div class="p-1.5 bg-white border border-slate-200 rounded text-slate-500 group-hover:text-indigo-600 group-hover:border-indigo-100 transition">
+                                <span class="text-[10px] font-bold">TIF</span>
+                            </div>
+                            <div>
+                                <p class="text-xs font-semibold text-slate-700 group-hover:text-indigo-900">LULC Badung 2020</p>
+                                <p class="text-[10px] text-slate-400">Sentinel-2 (30m)</p>
+                            </div>
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400 group-hover:text-indigo-500 transition transform group-hover:translate-y-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                    </a>
+
+                    <a href="{{ url_for('static', filename='downloads/LULC_Badung_2025.tif') }}" 
+                       download="LULC_Badung_2025.tif"
+                       class="flex items-center justify-between w-full p-2.5 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 rounded-lg text-left transition group">
+                        <div class="flex items-center gap-2.5">
+                            <div class="p-1.5 bg-white border border-slate-200 rounded text-slate-500 group-hover:text-indigo-600 group-hover:border-indigo-100 transition">
+                                <span class="text-[10px] font-bold">TIF</span>
+                            </div>
+                            <div>
+                                <p class="text-xs font-semibold text-slate-700 group-hover:text-indigo-900">LULC Badung 2025</p>
+                                <p class="text-[10px] text-slate-400">Sentinel-2 (30m)</p>
+                            </div>
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400 group-hover:text-indigo-500 transition transform group-hover:translate-y-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Estimasi Luasan Kabupaten -->
             <div class="bg-white p-6 rounded-2xl shadow-lg border border-slate-100">
                 <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
                     📊 Estimasi Luasan
@@ -68,24 +305,113 @@
                         <span class="text-lg font-black text-green-900" id="statVeg">5,120 Ha</span>
                     </div>
                 </div>
-                <p class="text-[10px] text-slate-400 mt-4 italic">*Data hasil pemodelan spasial Badung Utara - Selatan</p>
             </div>
 
         </div>
+    </div>
+</div>
+
+<!-- Modal Pengaduan Pelanggaran -->
+<div id="reportModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[2000] flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden transform scale-95 transition-transform duration-300">
+        <!-- Modal Header -->
+        <div class="bg-rose-600 px-6 py-4 flex justify-between items-center text-white">
+            <h3 class="font-extrabold text-base flex items-center gap-2">
+                🚨 Formulir Pengaduan Pelanggaran LP2B
+            </h3>
+            <button type="button" id="btnCancelReport" class="text-white/80 hover:text-white text-lg font-black">&times;</button>
+        </div>
+        
+        <!-- Modal Body / Form -->
+        <form id="violationForm" class="p-6 space-y-4" enctype="multipart/form-data">
+            <!-- Coordinates (Read-only for reference) -->
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Latitude</label>
+                    <input type="text" id="reportLat" name="latitude" readonly class="w-full text-xs font-semibold text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-2 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Longitude</label>
+                    <input type="text" id="reportLon" name="longitude" readonly class="w-full text-xs font-semibold text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-2 focus:outline-none">
+                </div>
+            </div>
+
+            <!-- Name and Contact -->
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nama Pelapor *</label>
+                    <input type="text" id="reportName" name="nama_pelapor" required placeholder="Nama lengkap" class="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg p-2.5 focus:outline-none focus:ring-1 focus:ring-rose-500 focus:border-rose-500">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Kontak Pelapor (Email/WA) *</label>
+                    <input type="text" id="reportContact" name="kontak" required placeholder="081xxx / email" class="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg p-2.5 focus:outline-none focus:ring-1 focus:ring-rose-500 focus:border-rose-500">
+                </div>
+            </div>
+
+            <!-- Kecamatan Selection -->
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Kecamatan Lokasi Kejadian *</label>
+                <select id="reportKecamatan" name="kecamatan" required class="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg p-2.5 focus:outline-none focus:ring-1 focus:ring-rose-500 focus:border-rose-500">
+                    <option value="" disabled selected>Pilih Kecamatan...</option>
+                    <option value="Abiansemal">Abiansemal</option>
+                    <option value="Kuta">Kuta</option>
+                    <option value="Kuta Selatan">Kuta Selatan</option>
+                    <option value="Kuta Utara">Kuta Utara</option>
+                    <option value="Mengwi">Mengwi</option>
+                    <option value="Petang">Petang</option>
+                </select>
+            </div>
+
+            <!-- Description -->
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Deskripsi Pelanggaran / Alih Fungsi *</label>
+                <textarea id="reportDesc" name="deskripsi" required rows="3" placeholder="Sebutkan jenis bangunan (perumahan, villa, toko, ruko) yang dibangun di atas lahan sawah tersebut..." class="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg p-2.5 focus:outline-none focus:ring-1 focus:ring-rose-500 focus:border-rose-500"></textarea>
+            </div>
+
+            <!-- Image Upload -->
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Unggah Foto Bukti Pelanggaran</label>
+                <input type="file" id="reportPhoto" name="foto" accept="image/*" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-rose-50 file:text-rose-700 hover:file:bg-rose-100 cursor-pointer">
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
+                <button type="button" id="btnFormCancel" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-xl transition">Batal</button>
+                <button type="submit" id="btnFormSubmit" class="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center gap-1.5">
+                    <span id="submitText">Kirim Laporan</span>
+                    <!-- Loading Spinner (Hidden by default) -->
+                    <svg id="submitSpinner" class="animate-spin h-3.5 w-3.5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
 <script>
+    // 1. INITIALIZE MAIN MAP
     var map = L.map('map', {
-        renderer: L.canvas() // Memaksa Leaflet menggunakan Canvas rendering alih-alih SVG
+        renderer: L.canvas()
     }).setView([-8.55, 115.18], 11);
     var currentLayer = null; 
+    var lp2bLayer = null;
+    var conflictLayer = null;
+    var vulnerabilityLayer = null;
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    L.control.scale({
+        imperial: false,
+        metric: true,
+        position: 'bottomleft'
     }).addTo(map);
 
     // 2. STYLE WARNA
@@ -94,13 +420,41 @@
         let color = "#cbd5e1"; 
         if (kelas === 'Lahan Terbangun') color = "#ef4444";        
         if (kelas === 'Lahan Sawah') color = "#f59e0b";            
-        if (kelas === 'Lahan Vegetasi lainnya') color = "#22c55e"; 
+        if (kelas === 'Lahan Vegetasi lainnya' || kelas === 'Lahan Vegetasi Lainnya') color = "#22c55e"; 
         if (kelas === 'Badan Air') color = "#3b82f6";              
         if (kelas === 'Lahan Terbuka') color = "#a8a29e";          
         return { fillColor: color, weight: 0, opacity: 0, color: 'white', fillOpacity: 1 };
     }
 
-    // 3. FUNGSI UPDATE SAKTI
+    // 3. LEGENDA GENERATOR
+    function createLegend() {
+        var legend = L.control({ position: 'bottomright' });
+        legend.onAdd = function () {
+            var div = L.DomUtil.create('div', 'info legend'),
+                categories = [
+                    { name: 'Badan Air', color: '#3b82f6' },
+                    { name: 'Lahan Terbangun', color: '#ef4444' },
+                    { name: 'Lahan Terbuka', color: '#a8a29e' },
+                    { name: 'Lahan Sawah', color: '#f59e0b' },
+                    { name: 'Vegetasi lainnya', color: '#22c55e' }
+                ];
+
+            div.innerHTML = '<h4 style="margin:0 0 8px; font-weight:bold;">Legenda Klasifikasi</h4>';
+
+            for (var i = 0; i < categories.length; i++) {
+                div.innerHTML +=
+                    '<i style="background:' + categories[i].color + '"></i> ' +
+                    categories[i].name + '<br>';
+            }
+            return div;
+        };
+        return legend;
+    }
+    
+    // Add legend to single map
+    createLegend().addTo(map);
+
+    // 4. UPDATE MAIN MAP & STATS
     function updateHalaman(year) {
         console.log("Mencoba mengambil data untuk tahun:", year);
 
@@ -108,9 +462,7 @@
         fetch(`/api/stats/${year}`)
             .then(res => res.json())
             .then(data => {
-                console.log("SUKSES Baca CSV:", data);
                 if (!data.error) {
-                    // Update angka jika elemennya ada di HTML
                     if(document.getElementById('statAir')) document.getElementById('statAir').innerText = data.air || "0 Ha";
                     if(document.getElementById('statTerbangun')) document.getElementById('statTerbangun').innerText = data.terbangun || "0 Ha";
                     if(document.getElementById('statTerbuka')) document.getElementById('statTerbuka').innerText = data.terbuka || "0 Ha";
@@ -124,7 +476,6 @@
         fetch(`/api/geojson/${year}`)
             .then(res => res.json())
             .then(data => {
-                console.log("SUKSES Baca GeoJSON:", data);
                 if (data.error) {
                     console.error("Error dari Flask:", data.error);
                     return;
@@ -136,14 +487,105 @@
                     style: getStyle,
                     onEachFeature: function (feature, layer) {
                         let props = feature.properties;
-                        layer.bindPopup(`<b>Kecamatan:</b> ${props.Kecamatan || props.kecamatan}<br><b>Kelas:</b> ${props.Kelas_Lahan || props.kelas}`);
+                        let kecName = props.Kecamatan || props.kecamatan;
+                        layer.bindPopup(`
+                            <div class="space-y-1">
+                                <p class="text-xs font-bold text-slate-800" style="margin: 0 0 2px;">Kecamatan: <span class="text-blue-600">${kecName}</span></p>
+                                <p class="text-[10px] font-semibold text-slate-500" style="margin: 0 0 6px;">Tutupan: ${props.Kelas_Lahan || props.kelas}</p>
+                                <div style="border-top: 1px solid #f1f5f9; padding-top: 6px; margin-top: 4px;">
+                                    <a href="/dss/report/${kecName}" class="inline-flex items-center justify-center gap-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-900 text-white rounded text-[10px] font-black no-underline transition shadow-sm w-full text-center" style="color: white; text-decoration: none;">
+                                        📥 Unduh Laporan PDF
+                                    </a>
+                                </div>
+                            </div>
+                        `);
                     }
                 }).addTo(map);
+                
+                // Update conflict layer if active
+                updateConflictLayer(year);
+                // Update vulnerability layer if active
+                updateVulnerabilityLayer();
             })
             .catch(err => console.error("Error fetch GeoJSON:", err));
     }
 
-    // 4. EVENT SLIDER
+    function updateConflictLayer(year) {
+        if (!document.getElementById('chkConflict').checked) return;
+        
+        if (conflictLayer) {
+            map.removeLayer(conflictLayer);
+        }
+        
+        fetch(`/api/conflict/${year}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) return;
+                document.getElementById('conflictSubtext').innerText = `${data.total_area_ha.toLocaleString('id-ID')} Ha alih fungsi ilegal`;
+                document.getElementById('conflictSubtext').classList.remove('text-slate-400');
+                document.getElementById('conflictSubtext').classList.add('text-rose-600', 'font-black');
+                
+                conflictLayer = L.geoJson(data.geojson, {
+                    style: function() {
+                        return {
+                            fillColor: '#ef4444',
+                            fillOpacity: 0.6,
+                            color: '#dc2626',
+                            weight: 2
+                        };
+                    },
+                    onEachFeature: function(feature, layer) {
+                        layer.bindPopup(`<b>Pelanggaran LP2B!</b><br>Kecamatan: ${feature.properties.kecamatan || feature.properties.Kecamatan}<br>Lahan sawah terkonversi menjadi Lahan Terbangun.`);
+                    }
+                }).addTo(map);
+            })
+            .catch(err => console.error("Error fetch conflict layer:", err));
+    }
+
+
+    function updateVulnerabilityLayer() {
+        if (!document.getElementById('chkVulnerability').checked) return;
+        
+        if (vulnerabilityLayer) {
+            map.removeLayer(vulnerabilityLayer);
+        }
+        
+        fetch(`/api/vulnerability`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) return;
+                document.getElementById('vulnerabilitySubtext').innerText = `${data.total_area_ha.toLocaleString('id-ID')} Ha rawan berubah`;
+                document.getElementById('vulnerabilitySubtext').classList.remove('text-slate-400');
+                document.getElementById('vulnerabilitySubtext').classList.add('text-orange-600', 'font-black');
+                
+                vulnerabilityLayer = L.geoJson(data.geojson, {
+                    style: function() {
+                        return {
+                            fillColor: '#f97316',
+                            fillOpacity: 0.65,
+                            color: '#ea580c',
+                            weight: 2
+                        };
+                    },
+                    onEachFeature: function(feature, layer) {
+                        let properties = feature.properties;
+                        let kec = properties.kecamatan_1 || properties.kecamatan || properties.Kecamatan || "Tidak diketahui";
+                        let luas = properties.area_ha ? properties.area_ha.toFixed(2) : "0";
+                        layer.bindPopup(`
+                            <div class="space-y-1">
+                                <p class="text-xs font-bold text-slate-800" style="margin: 0 0 2px;">⚠️ Daerah Rawan Alih Fungsi</p>
+                                <p class="text-[10px] font-semibold text-slate-500" style="margin: 0 0 4px;">Kecamatan: <span class="text-orange-600 font-bold">${kec}</span></p>
+                                <p class="text-[10px] text-slate-500" style="margin: 0 0 4px;">Luas Lahan: <span class="font-bold text-slate-800">${luas} Ha</span></p>
+                                <p class="text-[9px] text-slate-400 italic">Sawah di tahun 2025 yang diproyeksikan berubah menjadi Lahan Terbangun pada 2030.</p>
+                            </div>
+                        `);
+                    }
+                }).addTo(map);
+            })
+            .catch(err => console.error("Error fetch vulnerability layer:", err));
+    }
+
+    // 5. EVENT SLIDER SINGLE MAP
     const slider = document.getElementById('yearSlider');
     const display = document.getElementById('yearDisplay');
 
@@ -153,7 +595,590 @@
     };
 
     // PANGGIL PERTAMA KALI
-    setTimeout(() => { updateHalaman('2015'); }, 500); // Beri jeda 0.5 detik agar peta siap
-</script>
+    setTimeout(() => { updateHalaman('2030'); }, 500); // Default ke 2030
+
+    // 6. DUAL MAP / SPLIT SCREEN IMPLEMENTATION
+    var mapLeft = null;
+    var mapRight = null;
+    var layerLeft = null;
+    var layerRight = null;
+    var currentMode = 'single';
+
+    const btnSingleMap = document.getElementById('btnSingleMap');
+    const btnSplitMap = document.getElementById('btnSplitMap');
+    const mapSingleDiv = document.getElementById('map');
+    const mapSplitDiv = document.getElementById('map-split-container');
+    const splitControls = document.getElementById('splitControls');
+    const yearSliderCard = document.getElementById('yearSliderCard');
+    const drawControlPanel = document.getElementById('drawControlPanel');
+
+    function initSplitMaps() {
+        if (mapLeft && mapRight) {
+            mapLeft.invalidateSize();
+            mapRight.invalidateSize();
+            return;
+        }
+
+        // Left Map
+        mapLeft = L.map('map-left', {
+            renderer: L.canvas(),
+            zoomControl: false
+        }).setView(map.getCenter(), map.getZoom());
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap'
+        }).addTo(mapLeft);
+        createLegend().addTo(mapLeft);
+        L.control.scale({
+            imperial: false,
+            metric: true,
+            position: 'bottomleft'
+        }).addTo(mapLeft);
+
+        // Right Map
+        mapRight = L.map('map-right', {
+            renderer: L.canvas()
+        }).setView(map.getCenter(), map.getZoom());
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap'
+        }).addTo(mapRight);
+        createLegend().addTo(mapRight);
+        L.control.scale({
+            imperial: false,
+            metric: true,
+            position: 'bottomleft'
+        }).addTo(mapRight);
+
+        // Synchronization logic
+        var isSyncing = false;
+        mapLeft.on('move', function() {
+            if (!isSyncing) {
+                isSyncing = true;
+                mapRight.setView(mapLeft.getCenter(), mapLeft.getZoom(), { animate: false });
+                isSyncing = false;
+            }
+        });
+        mapRight.on('move', function() {
+            if (!isSyncing) {
+                isSyncing = true;
+                mapLeft.setView(mapRight.getCenter(), mapRight.getZoom(), { animate: false });
+                isSyncing = false;
+            }
+        });
+
+        // Load default layers
+        updateSplitMap('left', document.getElementById('selectLeftYear').value);
+        updateSplitMap('right', document.getElementById('selectRightYear').value);
+    }
+
+    function updateSplitMap(side, year) {
+        var targetMap = (side === 'left') ? mapLeft : mapRight;
+        var currentSideLayer = (side === 'left') ? layerLeft : layerRight;
+        var labelElement = (side === 'left') ? document.getElementById('yearLeftLabel') : document.getElementById('yearRightLabel');
+        
+        if (labelElement) labelElement.innerText = year;
+        
+        fetch(`/api/geojson/${year}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    console.error("Error load split GeoJSON:", data.error);
+                    return;
+                }
+                
+                if (currentSideLayer) { targetMap.removeLayer(currentSideLayer); }
+                
+                var newLayer = L.geoJson(data, {
+                    style: getStyle,
+                    onEachFeature: function (feature, layer) {
+                        let props = feature.properties;
+                        let kecName = props.Kecamatan || props.kecamatan;
+                        layer.bindPopup(`
+                            <div class="space-y-1">
+                                <p class="text-xs font-bold text-slate-800" style="margin: 0 0 2px;">Kecamatan: <span class="text-blue-600">${kecName}</span></p>
+                                <p class="text-[10px] font-semibold text-slate-500" style="margin: 0 0 6px;">Tutupan: ${props.Kelas_Lahan || props.kelas}</p>
+                                <div style="border-top: 1px solid #f1f5f9; padding-top: 6px; margin-top: 4px;">
+                                    <a href="/dss/report/${kecName}" class="inline-flex items-center justify-center gap-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-900 text-white rounded text-[10px] font-black no-underline transition shadow-sm w-full text-center" style="color: white; text-decoration: none;">
+                                        📥 Unduh Laporan PDF
+                                    </a>
+                                </div>
+                            </div>
+                        `);
+                    }
+                }).addTo(targetMap);
+                
+                if (side === 'left') {
+                    layerLeft = newLayer;
+                } else {
+                    layerRight = newLayer;
+                }
+            })
+            .catch(err => console.error("Error fetch split GeoJSON:", err));
+    }
+
+    btnSingleMap.onclick = function() {
+        if (currentMode === 'single') return;
+        currentMode = 'single';
+        
+        btnSingleMap.classList.add('bg-white', 'shadow', 'text-blue-600');
+        btnSingleMap.classList.remove('text-slate-500');
+        btnSplitMap.classList.remove('bg-white', 'shadow', 'text-blue-600');
+        btnSplitMap.classList.add('text-slate-500');
+        
+        mapSingleDiv.classList.remove('hidden');
+        mapSplitDiv.classList.add('hidden');
+        splitControls.classList.add('hidden');
+        yearSliderCard.classList.remove('hidden');
+        drawControlPanel.classList.remove('hidden');
+        document.getElementById('reportControlPanel').classList.remove('hidden');
+        document.getElementById('dssLayerPanel').classList.remove('hidden');
+        
+        setTimeout(() => {
+            map.setView(mapLeft ? mapLeft.getCenter() : map.getCenter(), mapLeft ? mapLeft.getZoom() : map.getZoom());
+            map.invalidateSize();
+        }, 100);
+    };
+
+    btnSplitMap.onclick = function() {
+        if (currentMode === 'split') return;
+        currentMode = 'split';
+        
+        btnSplitMap.classList.add('bg-white', 'shadow', 'text-blue-600');
+        btnSplitMap.classList.remove('text-slate-500');
+        btnSingleMap.classList.remove('bg-white', 'shadow', 'text-blue-600');
+        btnSingleMap.classList.add('text-slate-500');
+        
+        mapSingleDiv.classList.add('hidden');
+        mapSplitDiv.classList.remove('hidden');
+        splitControls.classList.remove('hidden');
+        yearSliderCard.classList.add('hidden');
+        drawControlPanel.classList.add('hidden');
+        document.getElementById('reportControlPanel').classList.add('hidden');
+        if (typeof deactivateReportMode === 'function') deactivateReportMode();
+        
+        // Reset and hide DSS Overlays in split mode
+        document.getElementById('chkLP2B').checked = false;
+        document.getElementById('chkConflict').checked = false;
+        document.getElementById('chkVulnerability').checked = false;
+        if (lp2bLayer) map.removeLayer(lp2bLayer);
+        if (conflictLayer) map.removeLayer(conflictLayer);
+        if (vulnerabilityLayer) map.removeLayer(vulnerabilityLayer);
+        document.getElementById('conflictSubtext').innerText = 'Alih Fungsi Lahan Ilegal';
+        document.getElementById('conflictSubtext').className = 'text-[9px] text-slate-400 font-bold';
+        document.getElementById('vulnerabilitySubtext').innerText = 'Daerah Rawan Berubah (2030)';
+        document.getElementById('vulnerabilitySubtext').className = 'text-[9px] text-slate-400 font-bold';
+        document.getElementById('dssLayerPanel').classList.add('hidden');
+        
+        // Hide custom analysis panel if open
+        document.getElementById('customAnalysisPanel').classList.add('hidden');
+        if (isDrawing) {
+            stopDrawing();
+        }
+        
+        initSplitMaps();
+    };
+
+    document.getElementById('selectLeftYear').onchange = function() {
+        updateSplitMap('left', this.value);
+    };
+    document.getElementById('selectRightYear').onchange = function() {
+        updateSplitMap('right', this.value);
+    };
+
+    // Event listener for LP2B checkbox
+    document.getElementById('chkLP2B').onchange = function() {
+        if (this.checked) {
+            if (lp2bLayer) {
+                map.addLayer(lp2bLayer);
+            } else {
+                fetch('/static/data/lp2b/lp2b_badung.geojson')
+                    .then(res => res.json())
+                    .then(data => {
+                        lp2bLayer = L.geoJson(data, {
+                            style: function() {
+                                return {
+                                    fillColor: '#10b981',
+                                    fillOpacity: 0.15,
+                                    color: '#059669',
+                                    weight: 1.5,
+                                    dashArray: '4, 4'
+                                };
+                            },
+                            onEachFeature: function(feature, layer) {
+                                layer.bindPopup("<b>Zona Hijau LP2B Badung</b><br>Kecamatan: " + (feature.properties.kecamatan || feature.properties.Kecamatan));
+                            }
+                        }).addTo(map);
+                    })
+                    .catch(err => console.error("Error loading LP2B layer:", err));
+            }
+        } else {
+            if (lp2bLayer) {
+                map.removeLayer(lp2bLayer);
+            }
+        }
+    };
+
+    // Event listener for Conflict checkbox
+    document.getElementById('chkConflict').onchange = function() {
+        if (this.checked) {
+            var currentYear = document.getElementById('yearSlider').value;
+            updateConflictLayer(currentYear);
+        } else {
+            if (conflictLayer) {
+                map.removeLayer(conflictLayer);
+            }
+            document.getElementById('conflictSubtext').innerText = 'Alih Fungsi Lahan Ilegal';
+            document.getElementById('conflictSubtext').className = 'text-[9px] text-slate-400 font-bold';
+        }
+    };
+
+    // Event listener for Vulnerability checkbox
+    document.getElementById('chkVulnerability').onchange = function() {
+        if (this.checked) {
+            updateVulnerabilityLayer();
+        } else {
+            if (vulnerabilityLayer) {
+                map.removeLayer(vulnerabilityLayer);
+            }
+            document.getElementById('vulnerabilitySubtext').innerText = 'Daerah Rawan Berubah (2030)';
+            document.getElementById('vulnerabilitySubtext').className = 'text-[9px] text-slate-400 font-bold';
+        }
+    };
+
+    // 7. CUSTOM QUERY DRAW & ANALYSIS ENGINE
+    var drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+
+    var polygonDrawer = new L.Draw.Polygon(map, {
+        shapeOptions: {
+            color: '#10b981',
+            fillColor: '#10b981',
+            fillOpacity: 0.2,
+            weight: 3
+        }
+    });
+
+    var isDrawing = false;
+    const btnToggleDraw = document.getElementById('btnToggleDraw');
+    const btnClearDraw = document.getElementById('btnClearDraw');
+    const customAnalysisPanel = document.getElementById('customAnalysisPanel');
+    const customAnalysisLoading = document.getElementById('customAnalysisLoading');
+    const customAnalysisResults = document.getElementById('customAnalysisResults');
+    const customAnalysisList = document.getElementById('customAnalysisList');
+    const customTotalArea = document.getElementById('customTotalArea');
+
+    btnToggleDraw.onclick = function() {
+        if (!isDrawing) {
+            isDrawing = true;
+            drawnItems.clearLayers();
+            polygonDrawer.enable();
+            
+            btnToggleDraw.innerText = "Selesai Menggambar (Double-Click)";
+            btnToggleDraw.classList.remove('bg-emerald-500', 'hover:bg-emerald-600');
+            btnToggleDraw.classList.add('bg-amber-500', 'hover:bg-amber-600');
+            
+            customAnalysisPanel.classList.add('hidden');
+            
+            // Nonaktifkan mode lapor jika aktif
+            if (isReportingMode) {
+                deactivateReportMode();
+            }
+        } else {
+            stopDrawing();
+        }
+    };
+
+    function stopDrawing() {
+        isDrawing = false;
+        polygonDrawer.disable();
+        btnToggleDraw.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+            Gambar Area Kustom
+        `;
+        btnToggleDraw.classList.remove('bg-amber-500', 'hover:bg-amber-600');
+        btnToggleDraw.classList.add('bg-emerald-500', 'hover:bg-emerald-600');
+    }
+
+    btnClearDraw.onclick = function() {
+        drawnItems.clearLayers();
+        customAnalysisPanel.classList.add('hidden');
+        btnClearDraw.classList.add('hidden');
+        stopDrawing();
+    };
+
+    map.on(L.Draw.Event.CREATED, function (e) {
+        var layer = e.layer;
+        drawnItems.addLayer(layer);
+        stopDrawing();
+        btnClearDraw.classList.remove('hidden');
+        
+        customAnalysisPanel.classList.remove('hidden');
+        customAnalysisLoading.classList.remove('hidden');
+        customAnalysisResults.classList.add('hidden');
+        
+        var geojson = layer.toGeoJSON();
+        var currentYear = document.getElementById('yearSlider').value;
+        
+        fetch(`/api/spatial-query/${currentYear}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ geometry: geojson.geometry })
+        })
+        .then(res => res.json())
+        .then(data => {
+            customAnalysisLoading.classList.add('hidden');
+            if (data.error) {
+                alert("Error kalkulasi spasial: " + data.error);
+                return;
+            }
+            displayCustomResults(data.data);
+        })
+        .catch(err => {
+            customAnalysisLoading.classList.add('hidden');
+            alert("Gagal memproses analisis spasial di server.");
+            console.error(err);
+        });
+    });
+
+    map.on('draw:drawstop', function() {
+        if (drawnItems.getLayers().length === 0) {
+            stopDrawing();
+        }
+    });
+
+    document.getElementById('btnCloseAnalysis').onclick = function() {
+        customAnalysisPanel.classList.add('hidden');
+    };
+
+    function displayCustomResults(results) {
+        customAnalysisList.innerHTML = '';
+        
+        var categories = {
+            'Badan Air': { name: 'Badan Air', color: '#3b82f6' },
+            'Lahan Terbangun': { name: 'Lahan Terbangun', color: '#ef4444' },
+            'Lahan Terbuka': { name: 'Lahan Terbuka', color: '#a8a29e' },
+            'Lahan Sawah': { name: 'Lahan Sawah', color: '#f59e0b' },
+            'Lahan Vegetasi Lainnya': { name: 'Vegetasi lainnya', color: '#22c55e' },
+            'Lahan Vegetasi lainnya': { name: 'Vegetasi lainnya', color: '#22c55e' }
+        };
+        
+        var totalArea = 0;
+        for (var key in results) {
+            totalArea += results[key];
+        }
+        
+        if (totalArea === 0) {
+            customAnalysisList.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">Tidak ada data tutupan lahan di area terpilih.</p>';
+            customTotalArea.innerText = '0 Ha';
+            customAnalysisResults.classList.remove('hidden');
+            return;
+        }
+        
+        var sortedKeys = Object.keys(results).sort((a, b) => results[b] - results[a]);
+        
+        sortedKeys.forEach(function(key) {
+            var area = results[key];
+            var pct = ((area / totalArea) * 100).toFixed(1);
+            var cat = categories[key] || { name: key, color: '#64748b' };
+            
+            var row = document.createElement('div');
+            row.className = 'space-y-1';
+            row.innerHTML = `
+                <div class="flex justify-between text-xs font-semibold text-slate-600">
+                    <span>${cat.name}</span>
+                    <span class="font-bold">${area.toLocaleString('id-ID')} Ha (${pct}%)</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div class="h-full rounded-full transition-all duration-500" style="width: ${pct}%; background-color: ${cat.color};"></div>
+                </div>
+            `;
+            customAnalysisList.appendChild(row);
+        });
+        
+        customTotalArea.innerText = totalArea.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' Ha';
+        customAnalysisResults.classList.remove('hidden');
+    }
+
+    // ==========================================
+    // NOTIFIKASI PENGADUAN PELANGGARAN (REPORTING)
+    // ==========================================
+    var isReportingMode = false;
+
+    const btnToggleReport = document.getElementById('btnToggleReport');
+    const btnCancelReportMode = document.getElementById('btnCancelReportMode');
+    const reportMapHelp = document.getElementById('reportMapHelp');
+    const reportModal = document.getElementById('reportModal');
+    const btnCancelReport = document.getElementById('btnCancelReport');
+    const btnFormCancel = document.getElementById('btnFormCancel');
+    const violationForm = document.getElementById('violationForm');
+    const reportLat = document.getElementById('reportLat');
+    const reportLon = document.getElementById('reportLon');
+    const submitSpinner = document.getElementById('submitSpinner');
+    const submitText = document.getElementById('submitText');
+    const btnFormSubmit = document.getElementById('btnFormSubmit');
+
+    function isPointInPolygon(point, vs) {
+        var x = point[0], y = point[1];
+        var inside = false;
+        for (var i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+            var xi = vs[i][0], yi = vs[i][1];
+            var xj = vs[j][0], yj = vs[j][1];
+            var intersect = ((yi > y) != (yj > y))
+                && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
+    }
+
+    function findKecamatanForLatLng(lat, lng) {
+        if (!currentLayer) return null;
+        let foundKec = null;
+        currentLayer.eachLayer(function(layer) {
+            if (foundKec) return;
+            if (layer.feature && layer.feature.geometry) {
+                let geom = layer.feature.geometry;
+                let props = layer.feature.properties;
+                let name = props.Kecamatan || props.kecamatan;
+                
+                if (geom.type === 'Polygon') {
+                    if (isPointInPolygon([lng, lat], geom.coordinates[0])) {
+                        foundKec = name;
+                    }
+                } else if (geom.type === 'MultiPolygon') {
+                    for (var i = 0; i < geom.coordinates.length; i++) {
+                        if (isPointInPolygon([lng, lat], geom.coordinates[i][0])) {
+                            foundKec = name;
+                            break;
+                        }
+                    }
+                }
+            }
+        });
+        return foundKec;
+    }
+
+    function activateReportMode() {
+        isReportingMode = true;
+        document.getElementById('map').style.cursor = 'crosshair';
+        reportMapHelp.classList.remove('hidden');
+        btnToggleReport.innerHTML = "🚨 Batal Melapor";
+        btnToggleReport.classList.remove('bg-rose-600', 'hover:bg-rose-700', 'active:bg-rose-800');
+        btnToggleReport.classList.add('bg-slate-700', 'hover:bg-slate-800', 'active:bg-slate-900');
+        
+        // Nonaktifkan mode gambar jika aktif
+        if (isDrawing) {
+            stopDrawing();
+        }
+    }
+
+    function deactivateReportMode() {
+        isReportingMode = false;
+        document.getElementById('map').style.cursor = '';
+        reportMapHelp.classList.add('hidden');
+        btnToggleReport.innerHTML = "🚨 Laporkan Alih Fungsi Lahan";
+        btnToggleReport.classList.remove('bg-slate-700', 'hover:bg-slate-800', 'active:bg-slate-900');
+        btnToggleReport.classList.add('bg-rose-600', 'hover:bg-rose-700', 'active:bg-rose-800');
+    }
+
+    btnToggleReport.onclick = function() {
+        if (!isReportingMode) {
+            activateReportMode();
+        } else {
+            deactivateReportMode();
+        }
+    };
+
+    btnCancelReportMode.onclick = function() {
+        deactivateReportMode();
+    };
+
+    function openReportModal(lat, lng) {
+        reportLat.value = lat.toFixed(6);
+        reportLon.value = lng.toFixed(6);
+        
+        // Auto-select Kecamatan jika terdeteksi spasial
+        let detectedKec = findKecamatanForLatLng(lat, lng);
+        if (detectedKec) {
+            const selectKec = document.getElementById('reportKecamatan');
+            for (let option of selectKec.options) {
+                if (option.value.toLowerCase() === detectedKec.toLowerCase()) {
+                    selectKec.value = option.value;
+                    break;
+                }
+            }
+        } else {
+            document.getElementById('reportKecamatan').value = "";
+        }
+        
+        // Show modal with transition
+        reportModal.classList.remove('hidden');
+        setTimeout(() => {
+            reportModal.classList.remove('opacity-0');
+            reportModal.querySelector('.transform').classList.remove('scale-95');
+            reportModal.querySelector('.transform').classList.add('scale-100');
+        }, 50);
+    }
+
+    function closeReportModal() {
+        reportModal.classList.add('opacity-0');
+        reportModal.querySelector('.transform').classList.remove('scale-100');
+        reportModal.querySelector('.transform').classList.add('scale-95');
+        setTimeout(() => {
+            reportModal.classList.add('hidden');
+        }, 300);
+    }
+
+    btnCancelReport.onclick = closeReportModal;
+    btnFormCancel.onclick = closeReportModal;
+
+    // Klik pada peta utama
+    map.on('click', function(e) {
+        if (isReportingMode) {
+            openReportModal(e.latlng.lat, e.latlng.lng);
+        }
+    });
+
+    // Handle AJAX Form submit
+    violationForm.onsubmit = function(e) {
+        e.preventDefault();
+        
+        submitSpinner.classList.remove('hidden');
+        btnFormSubmit.disabled = true;
+        submitText.innerText = "Mengirim...";
+        
+        var formData = new FormData(violationForm);
+        
+        fetch('/api/report-violation', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            submitSpinner.classList.add('hidden');
+            btnFormSubmit.disabled = false;
+            submitText.innerText = "Kirim Laporan";
+            
+            if (data.error) {
+                alert("Gagal mengirim laporan: " + data.error);
+            } else {
+                alert("Sukses!\n" + data.message);
+                closeReportModal();
+                deactivateReportMode();
+                violationForm.reset();
+            }
+        })
+        .catch(err => {
+            submitSpinner.classList.add('hidden');
+            btnFormSubmit.disabled = false;
+            submitText.innerText = "Kirim Laporan";
+            alert("Gagal menghubungi server untuk mengirim laporan.");
+            console.error(err);
+        });
+    };
 </script>
 {% endblock %}

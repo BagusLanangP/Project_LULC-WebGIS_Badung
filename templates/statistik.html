@@ -39,6 +39,36 @@
 
     </div>
 
+    <!-- Demographic Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+        <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-lg border border-slate-100">
+            <h3 class="font-bold text-slate-800 mb-4 flex items-center justify-between">
+                <span>👥 Pertumbuhan Penduduk & Perkembangan Lahan Terbangun</span>
+                <select id="demographyYearSelect" class="text-sm border border-slate-200 rounded-lg px-2 py-1 outline-none text-slate-600 bg-slate-50">
+                    <option value="2015">Tahun 2015</option>
+                    <option value="2020">Tahun 2020</option>
+                    <option value="2025">Tahun 2025</option>
+                    <option value="2030" selected>Tahun 2030</option>
+                </select>
+            </h3>
+            <div class="relative h-[350px] w-full">
+                <canvas id="demographyChart"></canvas>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-lg border border-slate-100 flex flex-col justify-between">
+            <div>
+                <h3 class="font-bold text-slate-800 mb-2 flex items-center gap-2">
+                    🌾 Ketahanan Pangan (Sawah per Kapita)
+                </h3>
+                <p class="text-xs text-slate-500 mb-4">Rata-rata luas ketersediaan sawah untuk setiap 1 jiwa (m²/jiwa) pada tahun terpilih.</p>
+            </div>
+            <div class="space-y-3.5 flex-grow overflow-y-auto" id="sawahPerKapitaContainer">
+                <!-- Sawah per Kapita dynamic progress bars will go here -->
+            </div>
+        </div>
+    </div>
+
     <div class="bg-white p-6 rounded-2xl shadow-lg border border-slate-100 mt-6">
         
         <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
@@ -64,6 +94,13 @@
                     <option value="Petang">Petang</option>
                 </select>
             </div>
+        </div>
+
+        <!-- Dynamic Demography Info Bar -->
+        <div id="demographyInfoBar" class="hidden flex flex-wrap gap-x-6 gap-y-2 p-4 mb-5 bg-blue-50/50 border border-blue-100 rounded-xl text-xs font-bold text-slate-700">
+            <div class="flex items-center gap-1.5">👥 Penduduk: <span id="infoPop" class="text-blue-600 font-black">-</span> Jiwa</div>
+            <div class="flex items-center gap-1.5">⚡ Kepadatan: <span id="infoDensity" class="text-indigo-600 font-black">-</span> Jiwa/km²</div>
+            <div class="flex items-center gap-1.5">🌾 Sawah per Kapita: <span id="infoSawahKapita" class="text-emerald-600 font-black">-</span> m²/jiwa</div>
         </div>
 
         <div class="overflow-x-auto rounded-xl border border-slate-200">
@@ -253,14 +290,202 @@
     // 3. Pasang pendeteksi perubahan (Event Listener) pada Dropdown
     document.getElementById('tableYearFilter').addEventListener('change', function(e) {
         fetchTableData(e.target.value); // Kalau ganti tahun, ambil data baru dari Flask
+        fetchTableDemography(e.target.value);
     });
 
     document.getElementById('tableKecFilter').addEventListener('change', function() {
         renderTable(); // Kalau ganti kecamatan, cukup saring data di memori (Sangat Cepat!)
+        updateTableDemographyInfo();
+    });
+
+    // === LOGIKA DEMOGRAFI & KETAHANAN PANGAN ===
+    let demographyChartInstance = null;
+
+    async function updateDemography(year) {
+        try {
+            const res = await fetch(`/api/demography/${year}`);
+            const result = await res.json();
+            if (result.error) {
+                console.error("Error demography:", result.error);
+                return;
+            }
+            
+            const data = result.data;
+            
+            // Extract values for Chart
+            const labels = data.map(item => item.Kecamatan);
+            const populations = data.map(item => item.Jumlah_Penduduk);
+            const builtUpAreas = data.map(item => item['Lahan Terbangun'] || 0);
+            
+            // 1. Update Grouped Bar Chart (Double Y-Axes)
+            const ctxDemo = document.getElementById('demographyChart').getContext('2d');
+            if (demographyChartInstance) {
+                demographyChartInstance.destroy();
+            }
+            
+            demographyChartInstance = new Chart(ctxDemo, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Jumlah Penduduk (Jiwa)',
+                            data: populations,
+                            backgroundColor: 'rgba(59, 130, 246, 0.75)',
+                            borderColor: '#3b82f6',
+                            borderWidth: 1.5,
+                            yAxisID: 'yPop'
+                        },
+                        {
+                            label: 'Lahan Terbangun (Ha)',
+                            data: builtUpAreas,
+                            backgroundColor: 'rgba(239, 68, 68, 0.75)',
+                            borderColor: '#ef4444',
+                            borderWidth: 1.5,
+                            yAxisID: 'yLand'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        yPop: {
+                            type: 'linear',
+                            position: 'left',
+                            title: { display: true, text: 'Jumlah Penduduk (Jiwa)', font: { weight: 'bold' } },
+                            ticks: { callback: value => value.toLocaleString('id-ID') },
+                            grid: { drawOnChartArea: true, color: '#f1f5f9' }
+                        },
+                        yLand: {
+                            type: 'linear',
+                            position: 'right',
+                            title: { display: true, text: 'Lahan Terbangun (Hektar)', font: { weight: 'bold' } },
+                            ticks: { callback: value => value.toLocaleString('id-ID') + ' Ha' },
+                            grid: { drawOnChartArea: false }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.datasetIndex === 0) {
+                                        label += context.raw.toLocaleString('id-ID') + ' Jiwa';
+                                    } else {
+                                        label += context.raw.toLocaleString('id-ID') + ' Ha';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // 2. Update Sawah per Kapita Progress Bars
+            const sawahContainer = document.getElementById('sawahPerKapitaContainer');
+            sawahContainer.innerHTML = '';
+            
+            // Sort by sawah per kapita descending to see food security leaders
+            const sortedData = [...data].sort((a, b) => b.Sawah_m2_per_Jiwa - a.Sawah_m2_per_Jiwa);
+            
+            // Find max for progress bar scale
+            const maxSawah = Math.max(...sortedData.map(item => item.Sawah_m2_per_Jiwa), 1);
+            
+            sortedData.forEach(item => {
+                const pct = (item.Sawah_m2_per_Jiwa / maxSawah) * 100;
+                
+                // Color coding based on vulnerability
+                let barColor = 'bg-emerald-500';
+                let textColor = 'text-emerald-700 bg-emerald-50 border-emerald-100';
+                if (item.Sawah_m2_per_Jiwa < 100) {
+                    barColor = 'bg-rose-500';
+                    textColor = 'text-rose-700 bg-rose-50 border-rose-100';
+                } else if (item.Sawah_m2_per_Jiwa < 300) {
+                    barColor = 'bg-amber-500';
+                    textColor = 'text-amber-700 bg-amber-50 border-amber-100';
+                }
+                
+                const html = `
+                    <div class="space-y-1">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="font-bold text-slate-700">${item.Kecamatan}</span>
+                            <span class="font-black px-2 py-0.5 rounded text-[10px] border ${textColor}">${item.Sawah_m2_per_Jiwa.toLocaleString('id-ID')} m²/jiwa</span>
+                        </div>
+                        <div class="w-full bg-slate-100 rounded-full h-2">
+                            <div class="${barColor} h-2 rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                        </div>
+                    </div>
+                `;
+                sawahContainer.insertAdjacentHTML('beforeend', html);
+            });
+            
+        } catch (error) {
+            console.error("Gagal memuat analisis demografi:", error);
+        }
+    }
+
+    let currentTableDemographyData = [];
+
+    async function fetchTableDemography(year) {
+        try {
+            const res = await fetch(`/api/demography/${year}`);
+            const result = await res.json();
+            if (!result.error) {
+                currentTableDemographyData = result.data;
+                updateTableDemographyInfo();
+            }
+        } catch (error) {
+            console.error("Gagal load info demografi tabel:", error);
+        }
+    }
+
+    function updateTableDemographyInfo() {
+        const kecFilter = document.getElementById('tableKecFilter').value;
+        const infoBar = document.getElementById('demographyInfoBar');
+        
+        if (!currentTableDemographyData || currentTableDemographyData.length === 0) {
+            infoBar.classList.add('hidden');
+            return;
+        }
+        
+        infoBar.classList.remove('hidden');
+        
+        if (kecFilter === 'Semua') {
+            const totalPop = currentTableDemographyData.reduce((sum, item) => sum + item.Jumlah_Penduduk, 0);
+            const totalArea = currentTableDemographyData.reduce((sum, item) => sum + item.Total_Luas_Ha, 0);
+            const totalSawah = currentTableDemographyData.reduce((sum, item) => sum + (item['Lahan Sawah'] || 0), 0);
+            
+            const density = totalPop / (totalArea / 100.0);
+            const sawahKapita = (totalSawah * 10000.0) / totalPop;
+            
+            document.getElementById('infoPop').innerText = totalPop.toLocaleString('id-ID');
+            document.getElementById('infoDensity').innerText = density.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('infoSawahKapita').innerText = sawahKapita.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        } else {
+            const item = currentTableDemographyData.find(d => d.Kecamatan === kecFilter);
+            if (item) {
+                document.getElementById('infoPop').innerText = item.Jumlah_Penduduk.toLocaleString('id-ID');
+                document.getElementById('infoDensity').innerText = item.Kepadatan_Penduduk.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                document.getElementById('infoSawahKapita').innerText = item.Sawah_m2_per_Jiwa.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            } else {
+                infoBar.classList.add('hidden');
+            }
+        }
+    }
+
+    document.getElementById('demographyYearSelect').addEventListener('change', function(e) {
+        updateDemography(e.target.value);
     });
 
     // 4. Panggil pertama kali saat halaman dibuka (Untuk Tahun 2030)
     fetchTableData('2030');
+    fetchTableDemography('2030');
+    updateDemography('2030');
 
     // Jalankan saat halaman dibuka
     initCharts();

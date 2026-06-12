@@ -7,6 +7,14 @@
             <a href="/" class="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 text-slate-600">🏠 Beranda</a>
             <a href="/statistik" class="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 text-slate-600">📊 Statistik</a>
             <a href="/peta" class="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 text-slate-600">🗺️ Peta Interaktif</a>
+            <a href="/dss" class="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 text-slate-600">🛡️ Analisis DSS & EWS</a>
+            <div class="border-t border-slate-100 my-2 pt-2"></div>
+            {% if session.get('logged_in') %}
+            <a href="/admin/dashboard" class="flex items-center gap-3 p-3 rounded-xl hover:bg-blue-50/50 text-blue-600 font-bold bg-blue-50/30 border border-blue-100/20">🛡️ Panel Admin</a>
+            <a href="/logout" class="flex items-center gap-3 p-3 rounded-xl hover:bg-rose-50 text-rose-600 font-bold">🚪 Keluar Admin</a>
+            {% else %}
+            <a href="/login" class="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 text-slate-400 italic font-semibold">🔑 Login Admin Bappeda</a>
+            {% endif %}
         </nav>
         <div class="p-4 bg-slate-50 border-t border-slate-100 text-center">
             <p class="text-[10px] text-slate-400 font-bold uppercase">SIG LULC v1.0</p>

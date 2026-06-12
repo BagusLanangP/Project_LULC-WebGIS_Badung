@@ -1,154 +1,338 @@
 {% extends 'layout.html' %}
 
+{% block head %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+    body {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .premium-card {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(12px);
+        transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .premium-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.05), 0 8px 10px -6px rgb(0 0 0 / 0.05);
+    }
+    .glow-bg {
+        position: relative;
+    }
+    .glow-bg::before {
+        content: '';
+        position: absolute;
+        top: -10%;
+        left: -10%;
+        width: 120%;
+        height: 120%;
+        background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(255, 255, 255, 0) 70%);
+        z-index: 0;
+        pointer-events: none;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="w-[95%] max-w-[1440px] mx-auto py-8">
+<div class="w-[95%] max-w-[1440px] mx-auto py-8 glow-bg">
     
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
         
+        <!-- MAIN CONTENT AREA -->
         <div class="lg:col-span-8 space-y-8">
             
-            <div class="bg-gradient-to-r from-blue-600 to-indigo-800 rounded-3xl p-8 md:p-10 text-white shadow-2xl relative overflow-hidden">
-                <div class="relative z-10">
-                    <h1 class="text-3xl md:text-4xl font-extrabold mb-4 leading-tight tracking-tight">
-                        SISTEM ANALISIS PERUBAHAN <br class="hidden md:block"/> TUTUPAN LAHAN DI BADUNG, BALI
-                    </h1>
-                    <p class="text-blue-100 text-base max-w-2xl mb-8 leading-relaxed">
-                        Sistem Informasi Geografis (WebGIS) yang menyajikan analisis dinamika tutupan lahan hingga Tahun 2030. Platform ini memadukan keandalan algoritma <i>Random Forest</i> untuk klasifikasi tutupan lahan historis, serta pemodelan spasial <i>Cellular Automata - Markov Chain</i> (CA-Markov) untuk memprediksi probabilitas ekspansi lahan terbangun di masa depan.
-                    </p>
-                    <a href="/peta" class="inline-flex items-center gap-2 bg-white text-blue-700 font-bold text-base py-3 px-8 rounded-full shadow-lg hover:bg-blue-50 hover:scale-105 hover:shadow-xl transition-all duration-300 group">
-                        Lihat Prediksi Sekarang
-                        <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
-                    </a>
-                </div>
+            <!-- Hero Banner Section -->
+            <div class="bg-gradient-to-br from-slate-900 via-indigo-950 to-blue-900 rounded-3xl p-8 md:p-12 text-white shadow-2xl relative overflow-hidden">
+                <!-- Decorative background elements -->
                 <div class="absolute right-0 top-0 opacity-10 translate-x-1/4 -translate-y-1/4">
-                    <svg class="w-80 h-80" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                    <svg class="w-[400px] h-[400px]" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                    </svg>
                 </div>
-            </div>
+                <div class="absolute -left-20 -bottom-20 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+                <div class="absolute -right-20 -bottom-20 w-80 h-80 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" style="animation-delay: 2s;"></div>
 
-            <div class="bg-white p-6 rounded-2xl shadow-lg border border-slate-100 relative overflow-hidden group hover:shadow-xl transition-shadow">
-                <div class="absolute top-0 left-0 w-2 h-full bg-blue-600"></div>
-                
-                <h2 class="text-xl font-bold text-slate-800 mb-2">Mengenai Proyek Penelitian LULC Badung</h2>
-                
-                <p class="text-slate-600 text-sm leading-relaxed mb-3">
-                    Platform WebGIS ini merupakan media diseminasi hasil penelitian spasial yang memetakan dinamika tutupan lahan historis dan memproyeksikan perubahannya di Kabupaten Badung. Sistem ini dirancang untuk memberikan landasan ilmiah terkait tren konversi tata ruang, khususnya ekspansi lahan terbangun di masa depan.
-                </p>
-
-                <button 
-                    onclick="const detail = document.getElementById('detail-proyek'); const btn = this; detail.classList.toggle('hidden'); btn.innerText = detail.classList.contains('hidden') ? 'Lihat Detail Selengkapnya ↓' : 'Sembunyikan Detail ↑';" 
-                    class="inline-block mt-1 text-blue-600 text-sm font-bold hover:text-blue-800 focus:outline-none transition-colors">
-                    Lihat Detail Selengkapnya ↓
-                </button>
-
-                <div id="detail-proyek" class="hidden mt-4 pt-4 border-t border-slate-100 space-y-4">
-                    
-                    <div>
-                        <h4 class="text-sm font-bold text-slate-800 mb-1">1. Klasifikasi <i>Random Forest</i> (Peta Dasar)</h4>
-                        <p class="text-slate-600 text-sm leading-relaxed">
-                            Pemetaan tutupan lahan pada penelitian ini diekstraksi dari citra satelit <b>Sentinel-2</b> (multitemporal 2015, 2020, dan 2025) yang memiliki keunggulan resolusi spasial tinggi (10 meter/piksel). Proses pengenalan objek dilakukan menggunakan algoritma <i>Machine Learning Random Forest</i>. Model ini telah diuji secara ketat dan menghasilkan tingkat akurasi klasifikasi (<i>Overall Accuracy</i>) yang sangat tinggi, memastikan bahwa representasi peta dasar valid dan sesuai dengan kondisi lapangan aktual.
-                        </p>
-                    </div>
-
-                    <div>
-                        <h4 class="text-sm font-bold text-slate-800 mb-1">2. Pemodelan Proyeksi 2030 (CA-Markov)</h4>
-                        <p class="text-slate-600 text-sm leading-relaxed">
-                            Untuk memperoleh peta prediksi tahun 2030, sistem menggunakan model <i>Cellular Automata - Markov Chain</i> (CA-Markov). Pertama, algoritma mempelajari tren perubahan lahan historis dari tahun 2015 ke 2020 untuk membuat matriks peluang transisi. Model ini kemudian "dikalibrasi" dengan memprediksi kondisi 2025 dan dicocokkan dengan data Sentinel 2025. Setelah terbukti akurat, logika matematis yang sama diaplikasikan untuk menyimulasikan laju ekspansi lahan secara keruangan hingga menyentuh target proyeksi Tahun 2030.
-                        </p>
-                    </div>
-
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="bg-white p-5 rounded-2xl shadow-lg border border-slate-100 hover:-translate-y-1 transition-all">
-                    <div class="flex items-center gap-3 mb-2">
-                        <div class="p-2 bg-green-100 rounded-lg text-green-600 text-xl">✅</div>
-                        <div>
-                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Akurasi Model</p>
-                            <h3 class="text-xl font-bold text-slate-800">91.87%</h3>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-white p-5 rounded-2xl shadow-lg border border-slate-100 hover:-translate-y-1 transition-all">
-                    <div class="flex items-center gap-3 mb-2">
-                        <div class="p-2 bg-purple-100 rounded-lg text-purple-600 text-xl">📊</div>
-                        <div>
-                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Analisis Tren</p>
-                            <h3 class="text-xl font-bold text-slate-800">Dinamis</h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <a href="/peta" class="group bg-white p-6 rounded-2xl shadow-lg border border-slate-100 flex items-center justify-between hover:border-blue-500 transition-all">
-                    <div>
-                        <h4 class="text-lg font-bold text-slate-800 group-hover:text-blue-600">Eksplorasi Peta</h4>
-                        <p class="text-slate-500 text-xs mt-1">Lihat visualisasi perubahan spasial.</p>
-                    </div>
-                    <span class="text-2xl group-hover:translate-x-1 transition-transform">➡️</span>
-                </a>
-                <a href="/statistik" class="group bg-white p-6 rounded-2xl shadow-lg border border-slate-100 flex items-center justify-between hover:border-indigo-500 transition-all">
-                    <div>
-                        <h4 class="text-lg font-bold text-slate-800 group-hover:text-indigo-600">Analisis Luasan</h4>
-                        <p class="text-slate-500 text-xs mt-1">Bandingkan grafik tren tutupan lahan.</p>
-                    </div>
-                    <span class="text-2xl group-hover:translate-x-1 transition-transform">➡️</span>
-                </a>
-            </div>
-            
-        </div>
-
-        <div class="lg:col-span-4 space-y-6">
-            
-            <div class="bg-white rounded-3xl shadow-lg border border-slate-100 overflow-hidden">
-                <img src="https://images.unsplash.com/photo-1537996194471-e657df975ab4?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Pemandangan Kabupaten Badung" class="w-full h-48 object-cover">
-                <div class="p-6">
-                    <h3 class="text-xl font-bold text-slate-800 mb-2">Wilayah Kajian</h3>
-                    <p class="text-sm text-slate-600 mb-4">
-                        Kabupaten Badung memiliki bentuk memanjang dari utara ke selatan, mencakup variasi topografi dari pegunungan hingga pesisir pantai padat pariwisata.
+                <div class="relative z-10">
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/20 border border-blue-400/30 rounded-full text-xs font-bold text-blue-300 uppercase tracking-widest mb-6">
+                        <span class="w-2 h-2 rounded-full bg-blue-400 animate-ping"></span>
+                        Sistem Pendukung Keputusan Spasial
+                    </span>
+                    <h1 class="text-3xl md:text-5xl font-black mb-6 leading-tight tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-blue-200">
+                        PREDIKSI &amp; MONITORING ALIH FUNGSI LAHAN
+                    </h1>
+                    <p class="text-slate-300 text-sm md:text-base max-w-2xl mb-8 leading-relaxed font-medium">
+                        Platform WebGIS interaktif Kabupaten Badung untuk memantau, mendeteksi, dan memproyeksikan perubahan lahan sawah hingga Tahun 2030. Didukung klasifikasi berbasis <b>Random Forest</b> (Akurasi 91.87%) dan pemodelan spasial <b>Cellular Automata - Markov Chain</b>.
                     </p>
-                    <div class="flex items-center gap-2 text-sm text-blue-600 font-semibold bg-blue-50 px-3 py-2 rounded-lg">
-                        <span>📍</span> Total Luas: ± 418,52 km²
+                    <div class="flex flex-wrap gap-4">
+                        <a href="/peta" class="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-extrabold text-sm py-3.5 px-8 rounded-2xl shadow-lg hover:shadow-blue-500/30 hover:scale-105 active:scale-95 transition-all duration-150 group">
+                            Mulai Analisis Peta
+                            <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
+                        </a>
+                        <a href="/dss" class="inline-flex items-center gap-2 bg-white/10 hover:bg-white/15 border border-white/20 text-white font-extrabold text-sm py-3.5 px-8 rounded-2xl shadow-md hover:scale-105 active:scale-95 transition-all duration-150">
+                            Dashboard DSS
+                        </a>
                     </div>
                 </div>
             </div>
 
-            <div class="bg-white rounded-3xl shadow-lg border border-slate-100 p-6">
-                <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                    <span>📋</span> Data 6 Kecamatan
+            <!-- Dynamic GIS Stats Grid (Fetched dynamically on load) -->
+            <div>
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <span>⚡</span> Statistik GIS Terkini (Proyeksi 2030)
+                </h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <!-- Stat Card 1 -->
+                    <div class="premium-card p-5 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-emerald-500"></div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">Akurasi Model</p>
+                        <h4 class="text-2xl font-black text-slate-800 mt-2">91.87%</h4>
+                        <p class="text-[9px] text-slate-400 font-medium mt-1">Random Forest OA</p>
+                    </div>
+
+                    <!-- Stat Card 2 -->
+                    <div class="premium-card p-5 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-rose-500"></div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">Alih Fungsi LP2B</p>
+                        <h4 class="text-2xl font-black text-rose-600 mt-2" id="statConflictArea">-- Ha</h4>
+                        <p class="text-[9px] text-slate-400 font-medium mt-1">Konversi Ilegal 2030</p>
+                    </div>
+
+                    <!-- Stat Card 3 -->
+                    <div class="premium-card p-5 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-orange-500"></div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">Estimasi Sawah</p>
+                        <h4 class="text-2xl font-black text-slate-800 mt-2" id="statSawahArea">-- Ha</h4>
+                        <p class="text-[9px] text-slate-400 font-medium mt-1">Tahun Proyeksi 2030</p>
+                    </div>
+
+                    <!-- Stat Card 4 -->
+                    <div class="premium-card p-5 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">Aduan Masuk</p>
+                        <h4 class="text-2xl font-black text-blue-600 mt-2" id="statReportsCount">0 Laporan</h4>
+                        <p class="text-[9px] text-slate-400 font-medium mt-1">Database Pengaduan</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Core Features / Workflows Section -->
+            <div class="space-y-4">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                    <span>🛠️</span> Modul Utama & Layanan
                 </h3>
                 
-                <ul class="space-y-3">
-                    <li class="flex items-center justify-between p-3 hover:bg-slate-50 rounded-lg transition-colors border-b border-slate-100 last:border-0">
-                        <span class="font-medium text-slate-700">Petang</span>
-                        <span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Zona Utara</span>
-                    </li>
-                    <li class="flex items-center justify-between p-3 hover:bg-slate-50 rounded-lg transition-colors border-b border-slate-100 last:border-0">
-                        <span class="font-medium text-slate-700">Abiansemal</span>
-                        <span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Zona Tengah</span>
-                    </li>
-                    <li class="flex items-center justify-between p-3 hover:bg-slate-50 rounded-lg transition-colors border-b border-slate-100 last:border-0">
-                        <span class="font-medium text-slate-700">Mengwi</span>
-                        <span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">Zona Tengah</span>
-                    </li>
-                    <li class="flex items-center justify-between p-3 hover:bg-slate-50 rounded-lg transition-colors border-b border-slate-100 last:border-0">
-                        <span class="font-medium text-slate-700">Kuta Utara</span>
-                        <span class="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded">Zona Selatan</span>
-                    </li>
-                    <li class="flex items-center justify-between p-3 hover:bg-slate-50 rounded-lg transition-colors border-b border-slate-100 last:border-0">
-                        <span class="font-medium text-slate-700">Kuta</span>
-                        <span class="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">Pusat Wisata</span>
-                    </li>
-                    <li class="flex items-center justify-between p-3 hover:bg-slate-50 rounded-lg transition-colors border-b border-slate-100 last:border-0">
-                        <span class="font-medium text-slate-700">Kuta Selatan</span>
-                        <span class="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">Pusat Wisata</span>
-                    </li>
-                </ul>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Feature Card 1 -->
+                    <a href="/peta" class="premium-card p-6 rounded-3xl border border-slate-100 shadow-sm flex items-start gap-4 hover:border-blue-400">
+                        <div class="p-3 bg-blue-50 text-blue-600 rounded-2xl text-xl font-black">🗺️</div>
+                        <div class="space-y-1">
+                            <h4 class="text-base font-extrabold text-slate-800">Visualisasi & Split Map</h4>
+                            <p class="text-slate-500 text-xs leading-relaxed">
+                                Bandingkan peta tutupan lahan multitemporal (2015-2030) secara berdampingan dengan pergerakan layar tersinkronisasi.
+                            </p>
+                        </div>
+                    </a>
+
+                    <!-- Feature Card 2 -->
+                    <a href="/dss" class="premium-card p-6 rounded-3xl border border-slate-100 shadow-sm flex items-start gap-4 hover:border-emerald-400">
+                        <div class="p-3 bg-emerald-50 text-emerald-600 rounded-2xl text-xl font-black">🛡️</div>
+                        <div class="space-y-1">
+                            <h4 class="text-base font-extrabold text-slate-800">Sistem Deteksi Pelanggaran</h4>
+                            <p class="text-slate-500 text-xs leading-relaxed">
+                                Deteksi otomatis tumpang-tindih pembangunan di zona hijau/LP2B serta visualisasi Early Warning System per kecamatan.
+                            </p>
+                        </div>
+                    </a>
+
+                    <!-- Feature Card 3 -->
+                    <a href="/peta" class="premium-card p-6 rounded-3xl border border-slate-100 shadow-sm flex items-start gap-4 hover:border-rose-400">
+                        <div class="p-3 bg-rose-50 text-rose-600 rounded-2xl text-xl font-black">🚨</div>
+                        <div class="space-y-1">
+                            <h4 class="text-base font-extrabold text-slate-800">Pelaporan Spasial Pengguna</h4>
+                            <p class="text-slate-500 text-xs leading-relaxed">
+                                Klik langsung lokasi sawah bermasalah di peta untuk mengirim formulir pengaduan dengan lampiran bukti foto ke email admin.
+                            </p>
+                        </div>
+                    </a>
+
+                    <!-- Feature Card 4 -->
+                    <a href="/statistik" class="premium-card p-6 rounded-3xl border border-slate-100 shadow-sm flex items-start gap-4 hover:border-indigo-400">
+                        <div class="p-3 bg-indigo-50 text-indigo-600 rounded-2xl text-xl font-black">📊</div>
+                        <div class="space-y-1">
+                            <h4 class="text-base font-extrabold text-slate-800">Analisis Luasan & Statistik</h4>
+                            <p class="text-slate-500 text-xs leading-relaxed">
+                                Bandingkan grafik tren perkembangan luasan kelas lahan Kabupaten Badung secara komparatif antartahun.
+                            </p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Project Details Accordion -->
+            <div class="premium-card p-6 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-2 h-full bg-indigo-600"></div>
+                <h3 class="text-lg font-extrabold text-slate-800 mb-2">Metodologi &amp; Alur Analisis Penelitian</h3>
+                <p class="text-slate-600 text-xs leading-relaxed mb-4">
+                    Sistem ini mengintegrasikan pengindraan jauh, kecerdasan buatan (*machine learning*), dan pemodelan prediksi spasial untuk memetakan serta memproyeksikan dinamika tutupan lahan. Klik tombol di bawah untuk melihat detail rincian metodologi ilmiah penelitian.
+                </p>
+                <button 
+                    onclick="const detail = document.getElementById('detail-proyek'); const btn = this; detail.classList.toggle('hidden'); btn.innerText = detail.classList.contains('hidden') ? 'Lihat Detail Metodologi & Algoritma ↓' : 'Sembunyikan Rincian ↑';" 
+                    class="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-indigo-600 hover:text-indigo-800 text-xs font-black rounded-xl border border-slate-200 transition-colors">
+                    Lihat Detail Metodologi &amp; Algoritma ↓
+                </button>
+
+                <div id="detail-proyek" class="hidden mt-6 pt-6 border-t border-slate-100 space-y-5">
+                    <div>
+                        <h4 class="text-xs font-extrabold text-slate-800 mb-1">1. Akuisisi &amp; Klasifikasi Citra (Random Forest)</h4>
+                        <p class="text-slate-500 text-[11px] leading-relaxed">
+                            Data spasial dasar dibangun melalui pengolahan citra satelit **Sentinel-2** multitemporal (Tahun 2015, 2020, dan 2025). Proses klasifikasi tutupan lahan (*Land Use/Land Cover*) menggunakan algoritma *supervised machine learning* **Random Forest** dengan membagi objek spasial ke dalam 5 kelas utama: *Badan Air, Lahan Terbangun, Lahan Terbuka, Lahan Sawah*, dan *Vegetasi Lainnya*. Model klasifikasi divalidasi dengan matriks kebingungan (*confusion matrix*) menghasilkan tingkat **Akurasi Keseluruhan (Overall Accuracy) sebesar 91.87%**, menjamin tingkat kepercayaan tinggi pada data masukan dasar.
+                        </p>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-extrabold text-slate-800 mb-1">2. Pemodelan Proyeksi Spasial (Cellular Automata - Markov Chain)</h4>
+                        <p class="text-slate-500 text-[11px] leading-relaxed">
+                            Prediksi perubahan tutupan lahan untuk tahun **2030** dimodelkan dengan integrasi **CA-Markov**:
+                            <br>• **Markov Chain**: Menganalisis perubahan tutupan lahan historis (2015-2020) untuk menghitung matriks probabilitas transisi perubahan lahan di masa depan.
+                            <br>• **Cellular Automata (CA)**: Menyimulasikan perubahan spasial secara dinamis dengan mempertimbangkan pengaruh piksel tetangga (*local neighborhood rules*) dan peta kesesuaian transisi (*suitability maps*).
+                            <br>• **Validasi Model**: Hasil proyeksi disimulasikan terlebih dahulu untuk tahun 2025 dan divalidasi dengan data aktual tahun 2025 untuk mengukur tingkat presisi prediksi sebelum melakukan proyeksi final ke tahun target 2030.
+                        </p>
+                    </div>
+                    <div>
+                        <h4 class="text-xs font-extrabold text-slate-800 mb-1">3. Deliniasi LP2B &amp; Deteksi Pelanggaran (Spatial Overlay Intersection)</h4>
+                        <p class="text-slate-500 text-[11px] leading-relaxed">
+                            Logika pendeteksian pelanggaran tata ruang lahan sawah dilindungi (LP2B) bekerja secara otomatis menggunakan operasi tumpang susun (*spatial overlay*):
+                            <br>• **Batas LP2B**: Zona lindung didefinisikan dengan mengekstrak poligon kelas *Lahan Sawah* dari peta tutupan lahan historis sebagai batas acuan spasial perlindungan pertanian berkelanjutan.
+                            <br>• **Deteksi Konflik**: Sistem menggunakan fungsi **Overlay Intersection** (`geopandas.overlay` dengan CRS proyeksi metrik UTM Zone 50S Bali) untuk memotong (*intersect*) area klasifikasi *Lahan Terbangun* terbaru dengan batas zona lindung *LP2B*.
+                            <br>• **Kalkulasi**: Setiap irisan spasial tumpang-tindih tersebut diidentifikasi secara otomatis sebagai **Pelanggaran Alih Fungsi Lahan Ilegal** dan dihitung luasannya dalam satuan Hektar (Ha).
+                        </p>
+                    </div>
+                </div>
             </div>
 
         </div>
+
+        <!-- SIDEBAR INFO PANEL -->
+        <div class="lg:col-span-4 space-y-6">
+            
+            <!-- Map Highlight / Area Card -->
+            <div class="premium-card rounded-3xl shadow-md border border-slate-100 overflow-hidden">
+                <img src="https://images.unsplash.com/photo-1537996194471-e657df975ab4?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Kabupaten Badung" class="w-full h-44 object-cover">
+                <div class="p-6">
+                    <h3 class="text-lg font-extrabold text-slate-800 mb-2">Wilayah Studi</h3>
+                    <p class="text-slate-500 text-xs leading-relaxed mb-4">
+                        Kabupaten Badung membentang secara geografis dari perbukitan sejuk di Petang (utara) hingga kawasan pesisir padat pariwisata di Kuta Selatan. Karakteristik ini memicu laju konversi lahan pertanian yang dinamis.
+                    </p>
+                    <div class="flex items-center gap-2 text-xs text-blue-600 font-extrabold bg-blue-50/70 border border-blue-100 px-3.5 py-2.5 rounded-xl">
+                        <span>📍</span> Luas Wilayah: ± 418.52 km²
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kecamatan Quick Actions List -->
+            <div class="premium-card rounded-3xl shadow-md border border-slate-100 p-6">
+                <h3 class="text-sm font-extrabold text-slate-800 mb-4 flex items-center gap-2">
+                    <span>📋</span> Ringkasan & Laporan Kecamatan
+                </h3>
+                
+                <ul class="space-y-2.5">
+                    <li class="flex items-center justify-between p-2.5 hover:bg-slate-50 border border-transparent hover:border-slate-100 rounded-xl transition-all group">
+                        <div>
+                            <p class="text-xs font-bold text-slate-700">Petang</p>
+                            <p class="text-[9px] text-slate-400 font-medium">Zona Utara (Konservasi)</p>
+                        </div>
+                        <a href="/dss/report/Petang" class="opacity-0 group-hover:opacity-100 px-2.5 py-1 bg-slate-800 hover:bg-slate-900 text-white rounded text-[9px] font-black transition-all shadow-sm">
+                            PDF 📥
+                        </a>
+                    </li>
+                    <li class="flex items-center justify-between p-2.5 hover:bg-slate-50 border border-transparent hover:border-slate-100 rounded-xl transition-all group">
+                        <div>
+                            <p class="text-xs font-bold text-slate-700">Abiansemal</p>
+                            <p class="text-[9px] text-slate-400 font-medium">Zona Tengah (Pertanian)</p>
+                        </div>
+                        <a href="/dss/report/Abiansemal" class="opacity-0 group-hover:opacity-100 px-2.5 py-1 bg-slate-800 hover:bg-slate-900 text-white rounded text-[9px] font-black transition-all shadow-sm">
+                            PDF 📥
+                        </a>
+                    </li>
+                    <li class="flex items-center justify-between p-2.5 hover:bg-slate-50 border border-transparent hover:border-slate-100 rounded-xl transition-all group">
+                        <div>
+                            <p class="text-xs font-bold text-slate-700">Mengwi</p>
+                            <p class="text-[9px] text-slate-400 font-medium">Pusat Pemerintahan</p>
+                        </div>
+                        <a href="/dss/report/Mengwi" class="opacity-0 group-hover:opacity-100 px-2.5 py-1 bg-slate-800 hover:bg-slate-900 text-white rounded text-[9px] font-black transition-all shadow-sm">
+                            PDF 📥
+                        </a>
+                    </li>
+                    <li class="flex items-center justify-between p-2.5 hover:bg-slate-50 border border-transparent hover:border-slate-100 rounded-xl transition-all group">
+                        <div>
+                            <p class="text-xs font-bold text-slate-700">Kuta Utara</p>
+                            <p class="text-[9px] text-slate-400 font-medium">Penyangga Wisata</p>
+                        </div>
+                        <a href="/dss/report/Kuta Utara" class="opacity-0 group-hover:opacity-100 px-2.5 py-1 bg-slate-800 hover:bg-slate-900 text-white rounded text-[9px] font-black transition-all shadow-sm">
+                            PDF 📥
+                        </a>
+                    </li>
+                    <li class="flex items-center justify-between p-2.5 hover:bg-slate-50 border border-transparent hover:border-slate-100 rounded-xl transition-all group">
+                        <div>
+                            <p class="text-xs font-bold text-slate-700">Kuta</p>
+                            <p class="text-[9px] text-slate-400 font-medium">Zona Wisata Pantai</p>
+                        </div>
+                        <a href="/dss/report/Kuta" class="opacity-0 group-hover:opacity-100 px-2.5 py-1 bg-slate-800 hover:bg-slate-900 text-white rounded text-[9px] font-black transition-all shadow-sm">
+                            PDF 📥
+                        </a>
+                    </li>
+                    <li class="flex items-center justify-between p-2.5 hover:bg-slate-50 border border-transparent hover:border-slate-100 rounded-xl transition-all group">
+                        <div>
+                            <p class="text-xs font-bold text-slate-700">Kuta Selatan</p>
+                            <p class="text-[9px] text-slate-400 font-medium">Perbukitan Kapur &amp; Wisata</p>
+                        </div>
+                        <a href="/dss/report/Kuta Selatan" class="opacity-0 group-hover:opacity-100 px-2.5 py-1 bg-slate-800 hover:bg-slate-900 text-white rounded text-[9px] font-black transition-all shadow-sm">
+                            PDF 📥
+                        </a>
+                    </li>
+                </ul>
+                <p class="text-[10px] text-slate-400 italic text-center mt-4">*Arahkan kursor ke kecamatan untuk mengunduh laporan PDF.</p>
+            </div>
+
+        </div>
+
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // 1. Fetch live database reports count
+        fetch('/api/reports/count')
+            .then(res => res.json())
+            .then(data => {
+                if (data.count !== undefined) {
+                    document.getElementById('statReportsCount').innerText = `${data.count} Laporan`;
+                }
+            })
+            .catch(err => console.error("Error fetching reports count:", err));
+
+        // 2. Fetch live conflict/violation area (for 2030)
+        fetch('/api/conflict/2030')
+            .then(res => res.json())
+            .then(data => {
+                if (data.total_area_ha !== undefined) {
+                    document.getElementById('statConflictArea').innerText = `${data.total_area_ha.toLocaleString('id-ID', {maximumFractionDigits: 1})} Ha`;
+                }
+            })
+            .catch(err => console.error("Error fetching conflict area:", err));
+
+        // 3. Fetch live land cover statistics (for 2030)
+        fetch('/api/stats/2030')
+            .then(res => res.json())
+            .then(data => {
+                if (data.sawah) {
+                    // Extract numeric value from sawah string "X,XXX.XX Ha"
+                    document.getElementById('statSawahArea').innerText = data.sawah.split(" ")[0] + " Ha";
+                }
+            })
+            .catch(err => console.error("Error fetching sawah area stats:", err));
+    });
+</script>
 {% endblock %}

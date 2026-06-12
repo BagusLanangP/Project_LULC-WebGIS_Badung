@@ -1,0 +1,353 @@
+{% extends 'layout.html' %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .pulse-red {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0% {
+            transform: scale(0.95);
+            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+        }
+        70% {
+            transform: scale(1);
+            box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+        }
+        100% {
+            transform: scale(0.95);
+            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6 p-6 max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">🛡️ Decision Support System (DSS)</h1>
+            <p class="text-slate-500 mt-1">Sistem Peringatan Dini & Deteksi Pelanggaran LP2B Kabupaten Badung</p>
+        </div>
+        <div class="bg-blue-50 text-blue-700 px-4 py-2 rounded-xl text-xs font-bold border border-blue-100 self-start md:self-auto">
+            Metode: CA-Markov (Proyeksi 2030)
+        </div>
+    </div>
+
+    <!-- Ringkasan Statistik Makro -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white p-6 rounded-2xl shadow-md border border-slate-100 flex items-center gap-4">
+            <div class="p-3 bg-emerald-50 text-emerald-500 rounded-xl">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                </svg>
+            </div>
+            <div>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Zona LP2B Badung</p>
+                <p class="text-2xl font-black text-slate-800">8.837,82 Ha</p>
+                <p class="text-[10px] text-slate-500 italic mt-0.5">*Mengwi, Abiansemal, & Petang</p>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-md border border-slate-100 flex items-center gap-4">
+            <div class="p-3 bg-red-50 text-red-500 rounded-xl">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+            </div>
+            <div>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Pelanggaran Tata Ruang (2030)</p>
+                <p class="text-2xl font-black text-red-600" id="totalViolationText">Loading...</p>
+                <p class="text-[10px] text-slate-500 italic mt-0.5">*Lahan Terbangun di LP2B</p>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-md border border-slate-100 flex items-center gap-4">
+            <div class="p-3 bg-amber-50 text-amber-500 rounded-xl">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <div>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Status Kerentanan Badung</p>
+                <p class="text-2xl font-black text-amber-600" id="generalStatusText">Loading...</p>
+                <p class="text-[10px] text-slate-500 italic mt-0.5">*Berdasarkan rata-rata degradasi</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Peta Pelanggaran Proyeksi & EWS Alert -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Dashboard EWS -->
+        <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-lg border border-slate-100 space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="font-bold text-slate-800 text-lg flex items-center gap-2">
+                    🚨 Status Early Warning System (EWS) Per Kecamatan
+                </h3>
+            </div>
+            
+            <!-- Table Container -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                            <th class="pb-3">Kecamatan</th>
+                            <th class="pb-3 text-right">Sawah 2015</th>
+                            <th class="pb-3 text-right">Sawah 2030 (Proj)</th>
+                            <th class="pb-3 text-right">Degradasi (%)</th>
+                            <th class="pb-3 text-right">Laju Konversi</th>
+                            <th class="pb-3 text-center">Status</th>
+                            <th class="pb-3 text-center">Laporan</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ewsTableBody" class="text-xs text-slate-600 font-semibold divide-y divide-slate-50">
+                        <tr>
+                            <td colspan="6" class="text-center py-10 text-slate-400">Loading data EWS...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Grafik Proyeksi Pelanggaran Spasial LP2B -->
+        <div class="bg-white p-6 rounded-2xl shadow-lg border border-slate-100 flex flex-col justify-between">
+            <div>
+                <h3 class="font-bold text-slate-800 text-lg mb-2">
+                    📈 Tren Pelanggaran LP2B
+                </h3>
+                <p class="text-xs text-slate-400 mb-4">Akumulasi luas konversi ilegal sawah di zona dilindungi (Hektar)</p>
+            </div>
+            <div class="h-64 flex items-center justify-center relative">
+                <canvas id="lp2bTrendChart" class="w-full h-full"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rekomendasi Kebijakan Dinamis (Bappeda Corner) -->
+    <div class="bg-white p-6 rounded-2xl shadow-lg border border-slate-100 space-y-4">
+        <h3 class="font-bold text-slate-800 text-lg border-b border-slate-100 pb-3 flex items-center gap-2">
+            🏛️ Rekomendasi Kebijakan Mitigasi Alih Fungsi Lahan (Bappeda Badung)
+        </h3>
+        
+        <div id="recommendationContainer" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Dynamic recommendation boxes will be injected here -->
+        </div>
+    </div>
+
+    <!-- Disclaimer Banner -->
+    <div class="bg-slate-100/60 border border-slate-200 rounded-2xl p-5 text-slate-500 text-xs leading-relaxed space-y-1 mt-6">
+        <p class="font-bold text-slate-700 flex items-center gap-1.5">
+            <span>📝</span> Catatan & Disklaimer Penggunaan Sistem
+        </p>
+        <p class="italic">
+            Sistem Pendukung Keputusan (DSS) ini menyajikan data hasil pemodelan prediksi spasial (CA-Markov) serta kompilasi pelaporan indikasi pelanggaran dari masyarakat. Seluruh rekomendasi kebijakan dan proyeksi yang dihasilkan berfungsi sebagai instrumen bantu analisis pendahuluan. Proses verifikasi fisik secara langsung di lapangan (ground-checking/ground-truthing) tetap menjadi kunci utama yang wajib dilakukan oleh pihak berwenang sebelum penentuan kebijakan hukum tata ruang resmi.
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // 1. Fetch EWS data
+        fetch('/api/dss/ews')
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    console.error(data.error);
+                    return;
+                }
+                renderEWS(data.data);
+            })
+            .catch(err => console.error("EWS Fetch Error:", err));
+
+        // 2. Fetch spatial violation areas for 2020, 2025, 2030 to build the chart
+        Promise.all([
+            fetch('/api/conflict/2020').then(res => res.json()),
+            fetch('/api/conflict/2025').then(res => res.json()),
+            fetch('/api/conflict/2030').then(res => res.json())
+        ])
+        .then(([c2020, c2025, c2030]) => {
+            const area2020 = c2020.total_area_ha || 0;
+            const area2025 = c2025.total_area_ha || 0;
+            const area2030 = c2030.total_area_ha || 0;
+
+            document.getElementById('totalViolationText').innerText = `${area2030.toLocaleString('id-ID')} Ha`;
+
+            renderChart(area2020, area2025, area2030);
+        })
+        .catch(err => {
+            document.getElementById('totalViolationText').innerText = "Gagal memuat";
+            console.error("Conflict Fetch Error:", err);
+        });
+    });
+
+    function renderEWS(data) {
+        const tableBody = document.getElementById('ewsTableBody');
+        const recContainer = document.getElementById('recommendationContainer');
+        tableBody.innerHTML = '';
+        recContainer.innerHTML = '';
+
+        let dangerCount = 0;
+        let warningCount = 0;
+
+        data.forEach(item => {
+            if (item.status === "Bahaya") dangerCount++;
+            if (item.status === "Siaga") warningCount++;
+
+            // 1. Append Table Row
+            let badgeClass = "";
+            let pulseClass = "";
+            if (item.status === "Bahaya") {
+                badgeClass = "bg-red-50 text-red-700 border border-red-100";
+                pulseClass = "pulse-red";
+            } else if (item.status === "Siaga") {
+                badgeClass = "bg-amber-50 text-amber-700 border border-amber-100";
+            } else {
+                badgeClass = "bg-emerald-50 text-emerald-700 border border-emerald-100";
+            }
+
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-slate-50 transition-colors";
+            tr.innerHTML = `
+                <td class="py-3.5 text-slate-800 font-bold">${item.kecamatan}</td>
+                <td class="py-3.5 text-right font-medium">${item.sawah_2015.toLocaleString('id-ID')} Ha</td>
+                <td class="py-3.5 text-right font-medium">${item.sawah_2030.toLocaleString('id-ID')} Ha</td>
+                <td class="py-3.5 text-right text-rose-600 font-bold">${item.loss_pct}%</td>
+                <td class="py-3.5 text-right font-medium">${item.annual_rate} Ha/thn</td>
+                <td class="py-3.5 text-center">
+                    <span class="inline-flex items-center px-2.5 py-1 text-[10px] font-black rounded-lg ${badgeClass} ${pulseClass}">
+                        ${item.status.toUpperCase()}
+                    </span>
+                </td>
+                <td class="py-3.5 text-center">
+                    <a href="/dss/report/${item.kecamatan}" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg transition text-[10px] font-black shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        PDF
+                    </a>
+                </td>
+            `;
+            tableBody.appendChild(tr);
+
+            // 2. Append Policy Recommendations
+            let boxBg = "";
+            let boxBorder = "";
+            let textAccent = "";
+            if (item.status === "Bahaya") {
+                boxBg = "bg-red-50/50";
+                boxBorder = "border-red-100";
+                textAccent = "text-red-700";
+            } else if (item.status === "Siaga") {
+                boxBg = "bg-amber-50/50";
+                boxBorder = "border-amber-100";
+                textAccent = "text-amber-700";
+            } else {
+                boxBg = "bg-emerald-50/50";
+                boxBorder = "border-emerald-100";
+                textAccent = "text-emerald-700";
+            }
+
+            const recBox = document.createElement('div');
+            recBox.className = `p-5 rounded-2xl border ${boxBorder} ${boxBg} space-y-2.5 flex flex-col justify-between`;
+            recBox.innerHTML = `
+                <div class="space-y-2.5">
+                    <div class="flex justify-between items-center">
+                        <h4 class="font-extrabold text-slate-800 text-sm">${item.kecamatan}</h4>
+                        <span class="px-2 py-0.5 rounded text-[9px] font-black uppercase ${badgeClass}">${item.status}</span>
+                    </div>
+                    <p class="text-xs text-slate-500 leading-relaxed flex-grow">${item.recommendation}</p>
+                </div>
+                <div class="pt-3 border-t border-slate-100/80 mt-2 flex justify-between items-center gap-2">
+                    <div class="text-[9px] font-bold ${textAccent} bg-white px-2 py-1.5 rounded-lg border border-slate-100 inline-block">
+                        Loss: ${item.loss_pct}%
+                    </div>
+                    <a href="/dss/report/${item.kecamatan}" class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-[10px] font-black rounded-lg transition shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Cetak PDF
+                    </a>
+                </div>
+            `;
+            recContainer.appendChild(recBox);
+        });
+
+        // 3. Update Status Makro
+        const generalStatusText = document.getElementById('generalStatusText');
+        if (dangerCount >= 3) {
+            generalStatusText.innerText = "Sangat Rawan";
+            generalStatusText.className = "text-2xl font-black text-red-600";
+        } else if (dangerCount > 0 || warningCount > 1) {
+            generalStatusText.innerText = "Rawan Sedang";
+            generalStatusText.className = "text-2xl font-black text-amber-600";
+        } else {
+            generalStatusText.innerText = "Aman Lestari";
+            generalStatusText.className = "text-2xl font-black text-emerald-600";
+        }
+    }
+
+    function renderChart(area2020, area2025, area2030) {
+        const ctx = document.getElementById('lp2bTrendChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['2020 (Hist)', '2025 (Hist)', '2030 (Proj)'],
+                datasets: [{
+                    label: 'Pelanggaran LP2B (Ha)',
+                    data: [area2020, area2025, area2030],
+                    borderColor: 'rgb(239, 68, 68)',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.3,
+                    pointBackgroundColor: 'rgb(239, 68, 68)',
+                    pointRadius: 6,
+                    pointHoverRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: '#f1f5f9'
+                        },
+                        ticks: {
+                            font: {
+                                size: 10,
+                                weight: 'bold'
+                            },
+                            color: '#94a3b8'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            font: {
+                                size: 10,
+                                weight: 'bold'
+                            },
+                            color: '#94a3b8'
+                        }
+                    }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

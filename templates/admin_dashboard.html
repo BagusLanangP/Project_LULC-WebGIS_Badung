@@ -1,0 +1,293 @@
+{% extends 'layout.html' %}
+
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+    #adminMap { height: 400px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6 p-6 max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">🛡️ Panel Admin Bappeda</h1>
+            <p class="text-slate-500 mt-1">Verifikasi & Pengendalian Pengaduan Alih Fungsi Lahan LP2B</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-bold rounded-lg border border-blue-100">
+                Mode: Administrator
+            </span>
+            <a href="/logout" class="px-3 py-1.5 bg-rose-50 text-rose-700 text-xs font-bold rounded-lg border border-rose-100 hover:bg-rose-100 transition-colors">
+                🚪 Keluar
+            </a>
+        </div>
+    </div>
+
+    <!-- Peta Sebaran Pengaduan -->
+    <div class="bg-white p-2 rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
+        <div id="adminMap" class="rounded-xl w-full"></div>
+    </div>
+
+    <!-- Tabel Pelaporan -->
+    <div class="bg-white p-6 rounded-2xl shadow-lg border border-slate-100">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="font-bold text-slate-800 text-lg flex items-center gap-2">
+                📋 Daftar Laporan Pengaduan Masyarakat (${{ reports|length }})
+            </h3>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-slate-200">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-slate-100 text-slate-600 text-xs uppercase tracking-wider">
+                        <th class="p-4 font-bold border-b border-slate-200">ID</th>
+                        <th class="p-4 font-bold border-b border-slate-200">Pelapor / Kontak</th>
+                        <th class="p-4 font-bold border-b border-slate-200">Kecamatan</th>
+                        <th class="p-4 font-bold border-b border-slate-200">Koordinat</th>
+                        <th class="p-4 font-bold border-b border-slate-200">Deskripsi</th>
+                        <th class="p-4 font-bold border-b border-slate-200">Foto Bukti</th>
+                        <th class="p-4 font-bold border-b border-slate-200">Tanggal</th>
+                        <th class="p-4 font-bold border-b border-slate-200 text-center">Status Verifikasi</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-slate-700 text-xs font-semibold">
+                    {% if reports|length == 0 %}
+                    <tr>
+                        <td colspan="8" class="p-8 text-center text-slate-400">Tidak ada data laporan pengaduan masuk.</td>
+                    </tr>
+                    {% endif %}
+                    {% for report in reports %}
+                    <tr class="hover:bg-slate-50 transition-colors" id="row-{{ report.id }}">
+                        <td class="p-4 text-slate-400 font-bold">#{{ report.id }}</td>
+                        <td class="p-4">
+                            <p class="text-slate-800 font-bold">{{ report.nama_pelapor }}</p>
+                            <p class="text-[10px] text-slate-400 font-medium">{{ report.kontak }}</p>
+                        </td>
+                        <td class="p-4 text-slate-800">{{ report.kecamatan }}</td>
+                        <td class="p-4">
+                            <button onclick="zoomToReport({{ report.latitude }}, {{ report.longitude }})" 
+                                    class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 font-black px-2 py-1 rounded border border-slate-200 transition">
+                                📍 {{ "%.5f"|format(report.latitude) }}, {{ "%.5f"|format(report.longitude) }}
+                            </button>
+                        </td>
+                        <td class="p-4 max-w-xs truncate" title="{{ report.deskripsi }}">{{ report.deskripsi }}</td>
+                        <td class="p-4">
+                            {% if report.foto_filename %}
+                            <button onclick="showPhotoModal('/static/uploads/reports/{{ report.foto_filename }}')" 
+                                    class="text-[10px] bg-blue-50 hover:bg-blue-100 text-blue-600 font-black px-2.5 py-1.5 rounded-lg border border-blue-100 transition flex items-center gap-1">
+                                🖼️ Lihat Foto
+                            </button>
+                            {% else %}
+                            <span class="text-slate-400 font-normal italic">Tidak ada</span>
+                            {% endif %}
+                        </td>
+                        <td class="p-4 text-slate-400">{{ report.tanggal }}</td>
+                        <td class="p-4 text-center">
+                            <select onchange="updateStatus({{ report.id }}, this)" 
+                                    class="text-xs font-black rounded-lg px-2.5 py-1.5 outline-none border transition-colors cursor-pointer select-status" 
+                                    data-status="{{ report.status }}">
+                                <option value="Menunggu Verifikasi" {% if report.status == 'Menunggu Verifikasi' %}selected{% endif %}>Menunggu Verifikasi</option>
+                                <option value="Dalam Investigasi" {% if report.status == 'Dalam Investigasi' %}selected{% endif %}>Dalam Investigasi</option>
+                                <option value="Disetujui Melanggar" {% if report.status == 'Disetujui Melanggar' %}selected{% endif %}>Disetujui Melanggar</option>
+                                <option value="Spam/Ditolak" {% if report.status == 'Spam/Ditolak' %}selected{% endif %}>Spam/Ditolak</option>
+                            </select>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Foto Bukti -->
+<div id="photoModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[2000] flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+    <div class="bg-white p-2 rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden transform scale-95 transition-transform duration-300 relative">
+        <button onclick="closePhotoModal()" class="absolute top-4 right-4 bg-slate-900/60 hover:bg-slate-900 text-white w-8 h-8 rounded-full flex items-center justify-center font-black transition z-10">&times;</button>
+        <img id="modalImg" src="" alt="Bukti Pelanggaran" class="w-full h-auto rounded-xl object-contain max-h-[75vh]" />
+    </div>
+</div>
+
+<!-- Toast Success Message -->
+<div id="toast" class="fixed bottom-5 right-5 z-[3000] bg-slate-900 text-white text-xs font-black px-4 py-3 rounded-xl shadow-xl border border-slate-700 flex items-center gap-2 transform translate-y-10 opacity-0 transition-all duration-300 pointer-events-none">
+    <span id="toastIcon">✅</span>
+    <span id="toastMessage">Status pengaduan berhasil diperbarui!</span>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 1. INSIALISASI PETA ADMIN
+    var adminMap = L.map('adminMap', {
+        renderer: L.canvas()
+    }).setView([-8.55, 115.18], 11);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap'
+    }).addTo(adminMap);
+
+    L.control.scale({
+        imperial: false,
+        metric: true,
+        position: 'bottomleft'
+    }).addTo(adminMap);
+
+    var markers = {};
+
+    // 2. PLOT MARKERS DARI DATA PYTHON
+    {% for report in reports %}
+        (function() {
+            var color = '#3b82f6'; // Blue for pending
+            var status = '{{ report.status }}';
+            if (status === 'Dalam Investigasi') color = '#f59e0b'; // Amber
+            if (status === 'Disetujui Melanggar') color = '#ef4444'; // Red
+            if (status === 'Spam/Ditolak') color = '#94a3b8'; // Grey
+
+            var marker = L.circleMarker([{{ report.latitude }}, {{ report.longitude }}], {
+                radius: 8,
+                fillColor: color,
+                fillOpacity: 0.8,
+                color: 'white',
+                weight: 2
+            }).bindPopup(`
+                <div class="p-1 space-y-1">
+                    <p class="text-xs font-black text-slate-800" style="margin:0 0 2px;">🚨 Pengaduan #{{ report.id }}</p>
+                    <p class="text-[10px] text-slate-500 font-bold" style="margin:0 0 2px;">Pelapor: {{ report.nama_pelapor }}</p>
+                    <p class="text-[10px] text-slate-400 style="margin:0 0 4px;">Kecamatan: {{ report.kecamatan }}</p>
+                    <p class="text-[10px] text-slate-600 font-bold style="margin:0 0 2px;">Status: <span style="color: ${color};">${status}</span></p>
+                </div>
+            `).addTo(adminMap);
+
+            markers[{{ report.id }}] = marker;
+        })();
+    {% endfor %}
+
+    // 3. ZOOM TO REPORT COORDINATES
+    window.zoomToReport = function(lat, lon) {
+        adminMap.setView([lat, lon], 16, { animate: true });
+        // Find marker to open popup
+        Object.values(markers).forEach(marker => {
+            if (marker.getLatLng().lat === lat && marker.getLatLng().lng === lon) {
+                marker.openPopup();
+            }
+        });
+    }
+
+    // 4. STYLE SELECT DROPDOWN DYNAMICALLY BASED ON CURRENT SELECTION
+    function styleSelect(selectElement) {
+        const status = selectElement.value;
+        selectElement.classList.remove(
+            'bg-blue-50', 'text-blue-700', 'border-blue-100',
+            'bg-amber-50', 'text-amber-700', 'border-amber-100',
+            'bg-red-50', 'text-red-700', 'border-red-100',
+            'bg-slate-50', 'text-slate-500', 'border-slate-100'
+        );
+        
+        if (status === 'Menunggu Verifikasi') {
+            selectElement.classList.add('bg-blue-50', 'text-blue-700', 'border-blue-100');
+        } else if (status === 'Dalam Investigasi') {
+            selectElement.classList.add('bg-amber-50', 'text-amber-700', 'border-amber-100');
+        } else if (status === 'Disetujui Melanggar') {
+            selectElement.classList.add('bg-red-50', 'text-red-700', 'border-red-100');
+        } else if (status === 'Spam/Ditolak') {
+            selectElement.classList.add('bg-slate-50', 'text-slate-500', 'border-slate-100');
+        }
+    }
+
+    // Initialize styling on load
+    document.querySelectorAll('.select-status').forEach(select => {
+        styleSelect(select);
+    });
+
+    // 5. UPDATE STATUS VIA AJAX (FETCH)
+    window.updateStatus = function(reportId, selectElement) {
+        const newStatus = selectElement.value;
+        
+        fetch('/api/reports/update-status', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                id: reportId,
+                status: newStatus
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                styleSelect(selectElement);
+                showToast('✅', 'Status pengaduan berhasil diperbarui!');
+                
+                // Update marker color on map
+                var marker = markers[reportId];
+                if (marker) {
+                    var color = '#3b82f6';
+                    if (newStatus === 'Dalam Investigasi') color = '#f59e0b';
+                    if (newStatus === 'Disetujui Melanggar') color = '#ef4444';
+                    if (newStatus === 'Spam/Ditolak') color = '#94a3b8';
+                    
+                    marker.setStyle({ fillColor: color });
+                    marker.setPopupContent(`
+                        <div class="p-1 space-y-1">
+                            <p class="text-xs font-black text-slate-800" style="margin:0 0 2px;">🚨 Pengaduan #${reportId}</p>
+                            <p class="text-[10px] text-slate-600 font-bold" style="margin:0 0 2px;">Status: <span style="color: ${color};">${newStatus}</span></p>
+                        </div>
+                    `);
+                }
+            } else {
+                showToast('❌', 'Gagal memperbarui status: ' + data.error);
+                // Revert
+                selectElement.value = selectElement.getAttribute('data-status');
+            }
+        })
+        .catch(err => {
+            showToast('❌', 'Error jaringan: Gagal terhubung ke server.');
+            selectElement.value = selectElement.getAttribute('data-status');
+        });
+    }
+
+    // 6. TOAST CONTROLLER
+    function showToast(icon, message) {
+        const toast = document.getElementById('toast');
+        document.getElementById('toastIcon').innerText = icon;
+        document.getElementById('toastMessage').innerText = message;
+        
+        toast.classList.remove('translate-y-10', 'opacity-0');
+        toast.classList.add('translate-y-0', 'opacity-100');
+        
+        setTimeout(() => {
+            toast.classList.remove('translate-y-0', 'opacity-100');
+            toast.classList.add('translate-y-10', 'opacity-0');
+        }, 3000);
+    }
+
+    // 7. PHOTO MODAL CONTROLLER
+    const photoModal = document.getElementById('photoModal');
+    const modalImg = document.getElementById('modalImg');
+
+    window.showPhotoModal = function(src) {
+        modalImg.src = src;
+        photoModal.classList.remove('hidden');
+        setTimeout(() => {
+            photoModal.classList.remove('opacity-0');
+            photoModal.classList.add('opacity-100');
+            photoModal.firstElementChild.classList.remove('scale-95');
+            photoModal.firstElementChild.classList.add('scale-100');
+        }, 50);
+    }
+
+    window.closePhotoModal = function() {
+        photoModal.classList.remove('opacity-100');
+        photoModal.classList.add('opacity-0');
+        photoModal.firstElementChild.classList.remove('scale-100');
+        photoModal.firstElementChild.classList.add('scale-95');
+        setTimeout(() => {
+            photoModal.classList.add('hidden');
+        }, 300);
+    }
+</script>
+{% endblock %}
